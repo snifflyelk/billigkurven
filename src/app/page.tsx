@@ -255,7 +255,7 @@ export default async function Home() {
               <div className="relative aspect-[4/3] overflow-hidden border-b border-slate-200 bg-gradient-to-br from-slate-100 to-slate-50 dark:border-slate-800 dark:from-slate-900 dark:to-slate-950">
                 {isLikelyProductImageUrl(product.imageUrl) ? (
                   <img
-                    src={product.imageUrl}
+                    src={product.imageUrl ?? undefined}
                     alt={product.name}
                     className="absolute inset-0 h-full w-full object-cover"
                     loading="lazy"
