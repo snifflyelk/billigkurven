@@ -1,0 +1,2112 @@
+You said:
+Det er innsamlingen av data i begynnelsen når vi ikke har noen brukere jeg er mest spent på. Hvordan skal det gå?
+Copilot said:
+Copilot
+Dette er 
+det riktige spørsmålet
+ – og det er her de fleste prosjekter stopper.
+Du har helt rett:
+Uten brukere → ingen data → ingen verdi → ingen brukere
+Men det finnes faktisk en ganske tydelig strategi for å bryte den sirkelen.
+Jeg gir deg en 
+praktisk playbook
+ som funker i denne typen produkter.
+🔑
+ Hovedstrategi: Start uten brukere
+Du må ikke prøve å løse alt med crowdsourcing fra dag 1.
+I stedet gjør du dette:
+Fase 1: Fake “brain” → Fase 2: Delvis ekte → Fase 3: Full engine
+🚀
+ FASE 1 (dag 1–14): “Fake it, but useful”
+Mål:
+Skap en opplevelse som gir verdi 
+uten brukere
+✅
+ 1. Start med nettbutikkdata (backbone)
+Du scraper f.eks:
+Oda
+Meny (delvis)
+Coop nett
+👉
+ dette gir deg:
+produkter
+priser
+kategorier
+Dette er grunnlaget.
+✅
+ 2. Lag “standard-handlekurver”
+Lag ferdige kurver:
+Student
+Par
+Familie
+Sunn
+Budsjett
+Eksempel:
+JSON
+Studentkurv:
+- Havregryn
+- Egg
+- Pasta
+- Kjøttdeig
+- Tomatsaus
+- Frossenpizza
+- Melk
+👉
+ Så gjør du:
+kalkuler billigste butikk basert på disse
+✅
+ 3. Fake personalisering (veldig viktig)
+La brukeren velge i onboarding:
+“Hva pleier du å kjøpe?”
+“Hvilken butikk handler du mest i?”
+“Hvor viktig er pris vs merke?”
+→ dette gir deg 
+pseudo-personalisering
+✅
+ 4. Vis verdi med én gang
+Første skjerm:
+Plain Text
+Basert på dine valg:
+Extra: 642 kr 
+✅
+Kiwi: 704 kr
+Meny: 833 kr
+→ Du kan spare 191 kr denne uka
+👉
+ Dette funker UTEN ekte brukerdatabase.
+🧠
+ FASE 2 (uke 2–6): Bootstrapping ekte data
+Dette er der du begynner å bygge “real engine”.
+✅
+ 1. Manuell input (undervurdert hack)
+La brukeren:
+legge inn 10–15 varer manuelt
+velge fra liste eller søk
+👉
+ dette gir deg:
+første personlige handleliste
+null behov for historikk
+✅
+ 2. “Soft crowdsourcing”
+Ikke krev:
+“last opp kvittering”
+Men gi opsjon:
+Plain Text
+Legg til varer du kjøpte → forbedrer anbefalingene dine
+eller:
+Plain Text
+Vil du hjelpe oss med å forbedre prisene?
+→ skann kvittering
+👉
+ frivillig → bedre konvertering
+✅
+ 3. Quick-win kvittering
+Ikke bygg full OCR engine med en gang.
+Start med:
+bilde → manuelt godkjent parsing
+eller halvautomatisk
+👉
+ 80/20
+✅
+ 4. “Derived data”
+Du kan generere data uten brukere:
+Eksempel:
+hvis melk finnes i alle butikker → lag syntetisk sammenligning
+bruk historisk scraping → bygg “fake trend”
+🔥
+ FASE 3 (måned 2+): Ekte datamotor
+Når du begynner å få brukere:
+✅
+ 1. Kvitteringsloop
+Dette er gullstandarden:
+Bruker handler → kvittering → parser → database
+→ forbedrer alle brukere
+✅
+ 2. Gradvis bedre matching
+Start:
+string matching
+Utvid:
+fuzzy search
+embeddings
+✅
+ 3. Confidence score
+Når dataen er svak:
+Plain Text
+Joker: 49,90
+Confidence: lav (2 datapunkter)
+👉
+ gjør det eksplisitt
+💥
+ Nøkkelen: hva som faktisk får folk inn
+Du trenger ikke perfekt data.
+Du trenger:
+“Good enough til å gi en AHA-opplevelse”
+✅
+ AHA-opplevelsen du vil ha:
+Plain Text
+Du handlet på Meny:
+Samme varer hos Extra:
+→ 182 kr billigere
+Hvis du klarer dette for én bruker: → de kommer tilbake
+🧠
+ Viktigste mental modell
+Du må tenke:
+Problem
+Feil løsning
+Riktig løsning
+ingen data
+vente på brukere
+bootstrap data
+ingen brukere
+bygge mer features
+vise verdi raskt
+dårlig kvalitet
+skjule det
+vise confidence
+🔧
+ Konkret plan du kan følge (helt realistisk)
+Uke 1
+scrape Oda
+lag produktdatabase
+lag 3 standard handlekurver
+bygg enkel kalkulasjon
+Uke 2
+onboarding:
+velg varer
+velg butikk
+vis billigste butikk
+Uke 3
+lag “lag din handleliste”
+lagre per bruker
+Uke 4
+legg til enkel kvittering upload (MVP)
+legg til “du kunne spart X”
+⚠️
+ Klassiske feil (ikke gjør dette)
+❌
+ Vente på perfekt data
+→ du kommer aldri i gang
+❌
+ Bygge full AI først
+→ unødvendig
+❌
+ Kreve kvittering upfront
+→ drop i onboarding
+❌
+ For bred scope
+→ start med 20 varer, ikke 10 000
+🧠
+ Ærlig fasit
+Alle som har lykkes med lignende:
+startet med dårlig data
+men god UX
+og tydelig verdi
+🚀
+ Hvis jeg var deg (konkret)
+Jeg ville gjort:
+Produkt v1
+bruker lager handleliste
+system viser billigste butikk
+system estimerer spart beløp
+Datakilde v1
+scraping + standardpriser
+Datakilde v2
+brukerinndata (manual)
+Datakilde v3
+kvitteringer
+🔥
+ Den viktigste innsikten
+Du trenger ikke data for å starte – du trenger en grunn til at noen gir deg data.
+Hvis du vil, kan jeg ta neste steg og:
+✅
+ lage deg en konkret “data bootstrap pipeline” (fra 0 → 10 000 datapunkter)
+✅
+ eller lage en MVP arkitektur du kan kode i React + Node denne uka
+✅
+ eller gi deg eksakt hvordan du f
+å
+r de f
+ø
+rste 50 brukerne som ogs
+å
+ gir deg data
+Bare si 
+👍
+You said:
+Fortell meg mer om hva de beste konkurrentene gjør i dag
+Copilot said:
+Copilot
+Her er en 
+ærlig og konkret gjennomgang av de beste konkurrentene i Norge akkurat nå
+, hva de gjør bra – og hva de egentlig bygger under panseret.
+Jeg deler det inn i 4 “spillestiler” (du vil se hvorfor dette er viktig for deg etterpå).
+🟢
+ 1. Kassal – “Dataplattformen”
+👉
+ Den mest komplette infrastrukturen i Norge akkurat nå
+Hva de gjør
+Samler priser fra mange butikker
+Lar deg:
+søke produkter
+sammenligne priser
+skanne strekkoder
+lage handleliste
+få prisvarsler
+Har kvitteringsskanner + bankintegrasjonkassal
+Hvordan de tenker
+“La oss samle all mulig data og bygge funksjoner rundt det”
+Styrker
+✅
+ Mest omfattende datasett
+✅
+ Mange features (scanner, varsler, kart, osv.)
+✅
+ Crowdsourcing 
+→
+ skalerbar datamodellkassalapp
+Svakheter (viktig)
+❌
+ For mange features → lite fokus
+❌
+ Gir ikke tydelig svar (
+“
+hva skal jeg gj
+ø
+re?
+”
+)
+❌
+ Lite personlig
+❌
+ UX f
+ø
+les mer som verkt
+ø
+y enn produkt
+🟡
+ 2. Sjekkmat – “UX-first prissammenligning”
+👉
+ Den som kommer nærmest “riktig retning”
+Hva de gjør
+Sammenligner priser på tvers av kjeder
+Viser 
+store prisforskjeller
+Lar deg:
+lage handleliste
+se billigste butikk
+følge prishistorikksjekkmat
+Hvordan de tenker
+“Vis mest mulig innsikt og forskjeller”
+Styrker
+✅
+ Veldig tydelig verdi (“176% forskjell”)
+✅
+ N
+æ
+rmer seg handlekurv-tenkning
+✅
+ Bra visualisering av prisgap
+Svakheter
+❌
+ Ikke personalisert
+❌
+ Basert p
+å
+ eksterne data (Kassal)
+❌
+ Mangler 
+“
+daglig bruk
+”
+-f
+ø
+lelse
+🔵
+ 3. SeSum – “Data fra kvitteringer”
+👉
+ Den mest interessante challengeren
+Hva de gjør
+Bygger på ekte kvitteringer (crowdsourcing)
+Fokus på:
+ekte priser (ikke tilbud)
+automatisert handleliste
+personlig forslag
+Rangerer butikker basert på din faktiske kurvsesum
+Hvordan de tenker
+“Vi bygger en personlig spare-assistent”
+Styrker
+✅
+ Best på 
+datakvalitet (real prices)
+✅
+ Tydelig produktloop:
+handle → kvittering → bedre data
+✅
+ Har allerede personalisering-logikk
+Svakheter
+❌
+ Avhengig av brukere → cold start problem
+❌
+ Lite volum enda
+❌
+ Tidlig fase (beta)
+🟣
+ 4. Mattilbud / Matpris – “Tilbudsaggregatorer”
+👉
+ De mest brukte, men også enkleste
+Hva de gjør
+Samler tilbudsaviser fra alle butikker
+Viser:
+kampanjer
+ukens tilbud
+“beste deals”mattilbud+1
+Hvordan de tenker
+“Folk vil se tilbud”
+Styrker
+✅
+ Enorm trafikk (enkelt use case)
+✅
+ Lett 
+å
+ forst
+å
+✅
+ Bra for 
+“
+quick savings
+”
+Svakheter
+❌
+ Ingen faktisk pristrend
+❌
+ Ingen handlekurv-logikk
+❌
+ Ingen personalisering
+❌
+ Kan v
+æ
+re misvisende (
+“
+fake tilbud
+”
+)
+🧱
+ 5. Allematpriser – “Datadump”
+Hva de gjør
+Scraper priser
+viser:
+prisendringer
+hva som går opp/ned
+allematpriser
+Hvordan de tenker
+“Mer data = mer verdi”
+Styrker
+✅
+ Bra dataoversikt
+✅
+ Enkel 
+å
+ bygge
+Svakheter
+❌
+ Ingen UX
+❌
+ Ingen personalisering
+❌
+ Ingen beslutningsst
+ø
+tte
+🧠
+ Overordnet bilde (veldig viktig)
+Dette er egentlig hele markedet forklart i én tabell:
+Aktør
+Fokus
+Problem de løser
+Kassal
+Data + features
+“Finn priser”
+Sjekkmat
+Visualisering
+“Se forskjeller”
+SeSum
+Kvitteringer + personalisering
+“Forstå hva du betaler”
+Mattilbud
+Kampanjer
+“Se tilbud”
+Allematpriser
+Data
+“Følg prisnivå”
+🔥
+ Det ingen har løst (din mulighet)
+Dette er det viktigste du må forstå:
+❌
+ Ingen gjør dette skikkelig:
+👉
+ “Hva bør JEG gjøre i dag for å spare penger?”
+Alle konkurrentene stopper her:
+Kassal → gir deg data
+Sjekkmat → gir deg innsikt
+SeSum → nært, men tidlig
+Mattilbud → gir deg tilbud
+Ingen går helt hit:
+Plain Text
+Du (Olav):
+Basert på dine 18 varer:
+Extra: 642 kr 
+✅
+Kiwi: 711 kr
+Meny: 829 kr
+→ Spar 187 kr
+→ Disse 3 varene driver opp prisen:
+- Norvegia (+28%)
+- Kjøttdeig (+19%)
+- Pepsi Max (+31%)
+Show more lines
+👉
+ Dette er “killer feature” som mangler
+🧠
+ Hva de beste gjør riktig
+Her er de viktigste “building blocks” du bør kopiere:
+✅
+ Kassal → data-infrastruktur
+scraping
+crowdsourcing
+kvitteringer
+prisvarsler
+👉
+ Dette er fundamentet
+✅
+ Sjekkmat → visualisering
+prisforskjeller (%)
+billigste butikk
+handlekurv
+👉
+ dette er UX-retning
+✅
+ SeSum → feedback loop
+kvittering → data → bedre anbefalinger
+👉
+ dette er flywheel
+✅
+ Mattilbud → distribusjon
+SEO
+enkel verdi
+👉
+ dette er growth
+💡
+ Hva du bør gjøre annerledes
+Hvis du kombinerer det riktig:
+Din versjon (beste av alle):
+1. Datakilde
+scraping (start)
+kvitteringer (scale)
+2. Produkt
+handlekurv → billigste butikk
+spart beløp
+personalisering
+3. UX
+ett svar:
+“Handle her”
+4. Differensiering
+normalpris vs tilbud
+confidence score
+personlig analyse
+🚀
+ Ærlig konklusjon
+Markedet i Norge er:
+✅
+ Validert (folk vil ha dette)
+✅
+ Teknisk mulig (Kassal beviser det)
+❌
+ Ikke løst (ingen dominant vinner)
+🧠
+ Den viktigste innsikten
+Alle konkurrentene er enten:
+datasystemer
+eller oversiktsverktøy
+Ingen er en ekte “beslutningsmotor”
+Hvis du vil ta dette videre
+Jeg kan nå gjøre en av disse for deg:
+1. 
+🔥
+ “Hvordan slå Kassal konkret”
+→ feature-by-feature plan
+2. 
+🚀
+ MVP du kan bygge på 2–3 uker
+→ med nøyaktige endpoints + database
+3. 
+💰
+ Forretningscase
+→ hvordan dette faktisk kan bli en seriøs business i Norge
+Bare si hva du vil gå dypere på 
+👍
+Sources
+You said:
+Får dette eller kan dette gi noen synergier til de andre prosjektene mine?
+Copilot said:
+Copilot
+Reasoning completed in 1 step
+Ja — 
+veldig mye mer enn det kan se ut som ved første øyekast
+.
+Faktisk tror jeg en slik matpris-/handleliste-/personaliseringstjeneste kan gi 
+flere sterke synergier
+ til de andre prosjektene dine, både teknisk, kommersielt og markedsmessig.
+Det avhenger litt av 
+hva du vil at dette prosjektet skal være
+:
+et selvstendig forbrukerprodukt
+, eller
+en motor / plattform
+ som også styrker de andre selskapene dine.
+Jeg tror ærlig talt det mest interessante for deg er 
+nr. 2
+.
+Kort svar
+Ja, det kan gi synergier til:
+Kreativ Kode
+Cellfix
+Credibase
+delvis også 
+gfmealmap
+Men:
+det er 
+ikke like sterk synergi til alt
+og du bør være bevisst på 
+hva som er reell synergi
+ vs. 
+bare “det er litt samme tech”
+Den viktigste måten å tenke på
+Dette prosjektet kan gi deg verdi på 
+4 nivåer
+:
+Teknologi / infrastruktur
+Kompetanse / case
+Distribusjon / trafikk
+Forretningsmuligheter / data / B2B
+Det er her synergiene ligger.
+1. Synergi med Kreativ Kode
+👉
+ Den sterkeste og mest direkte synergien
+Dette er kanskje den mest åpenbare.
+Hvis du bygger en smart matpris-/personaliseringsløsning, så får Kreativ Kode:
+A. Et veldig sterkt case
+I stedet for å si:
+“Vi lager nettsider og digitale løsninger”
+kan du si:
+“Vi har bygget en datadrevet plattform som samler prisdata, personaliserer brukeropplevelsen og hjelper folk å spare penger”
+Det er 
+et mye sterkere salgsargument
+ for:
+webutvikling
+produktutvikling
+UX
+automatisering
+datadrevne tjenester
+API- og integrationsarbeid
+Hva det gir deg konkret
+Du kan bruke det som case for kunder som ønsker:
+medlemsportaler
+sammenligningstjenester
+pris-/produktkataloger
+personalisering
+dashboards
+markedsplasser
+abonnementsprodukter
+B. Case som faktisk imponerer mer enn en vanlig nettside
+Mange byråer viser bare:
+“her er en kul hjemmeside”
+“her er et pent design”
+Men dette prosjektet kan vise:
+ekte produktlogikk
+databasearkitektur
+scraping / datainnsamling
+personalisering
+automatiserte anbefalinger
+SEO + innholdsstrategi
+konverteringsflyt
+Det er 
+mye mer “high value”
+ enn bare en brosjyreside.
+C. Mulig lead magnet for Kreativ Kode
+Hvis du får trafikk på en slik forbrukertjeneste, kan du bruke det til å vise:
+hva dere kan bygge
+hvordan dere jobber
+at dere kan lage faktiske SaaS-/plattformprodukter
+Du får altså ikke bare et produkt — du får også 
+et showroom for byråkompetansen deres
+.
+2. Synergi med Cellfix
+👉
+ Veldig sterk, spesielt hvis du tenker data og rapportering
+Dette er faktisk en bedre synergi enn mange ville tro.
+Cellfix handler jo i praksis om:
+Excel
+Power BI
+strukturering av data
+rapportering
+analyse
+effektivisering
+Og dette prosjektet er i bunn og grunn:
+et dataproblem + et analyseproblem + et visualiseringsproblem
+A. Perfekt demonstrasjon av datakompetanse
+Du kan bruke prosjektet som bevis på at du kan:
+bygge datamodeller
+vaske og standardisere data
+lage KPI-er
+visualisere prisutvikling
+lage beslutningsstøtte
+Det er 
+direkte relevant
+ for Cellfix sin troverdighet.
+B. Kan bli et B2B-spor i seg selv
+På sikt kan du lage:
+rapporter om prisutvikling
+dashboards for dagligvareanalyse
+kategorioversikter
+butikk- eller regionanalyser
+Det er kanskje ikke Cellfix sitt nåværende hovedprodukt, men det ligger veldig nært det du allerede gjør godt:
+tall
+innsikt
+dashboards
+automatisering
+C. Intern gjenbruk av komponenter
+Mye av logikken du bygger her kan i prinsippet gjenbrukes i andre Cellfix-løsninger:
+KPI-beregning
+sammenligning mellom grupper
+historiske trender
+variansanalyse
+alerts
+dashboards
+Altså:
+Dette prosjektet kan være 
+et sandbox-prosjekt
+ som gjør deg skarpere i akkurat den typen ting Cellfix lever av.
+3. Synergi med Credibase
+👉
+ Ikke like åpenbar, men strategisk interessant
+Ved første øyekast ser matpris og kredittanalyse ganske ulikt ut.
+Men det finnes faktisk 
+2–3 veldig interessante koblinger
+.
+A. Felles DNA: datadrevet beslutningsstøtte
+Begge produktene handler egentlig om:
+samle inn mange datapunkter
+standardisere informasjon
+lage score / vurderinger
+hjelpe brukeren å ta bedre valg
+Credibase:
+“Kan jeg stole på denne bedriften / hvor høy er risikoen?”
+Matprisproduktet:
+“Hvor bør jeg handle / hva er en god pris / hvor overbetaler jeg?”
+Forskjellig kategori, men 
+samme tankegang
+:
+aggregasjon
+scoring
+ranking
+forklarbar innsikt
+Det betyr at du bygger opp kompetanse i:
+scoremodeller
+datarensing
+matching
+presentasjon av komplekse data på en enkel måte
+Det er faktisk veldig relevant for Credibase.
+B. Samme type “motor-tenkning”
+Du trener på å bygge:
+sammenligningsmotorer
+ranking-motorer
+confidence scores
+personalisering / anbefalinger
+Dette er nyttig også i Credibase, hvor du på sikt kan vilja ha:
+risikoscore
+anbefalinger
+“watchlists”
+varsler ved endringer
+forklaringer på hvorfor et selskap scores som det gjør
+C. Mulig teknologisk gjenbruk
+Du vil sannsynligvis bygge eller lære mye om:
+cron jobs
+data pipelines
+ETL
+event tracking
+API-design
+søk og filtrering
+dashboarding
+Alt dette kan gjenbrukes i Credibase.
+Men viktig nyanse
+Credibase får mer indirekte synergi enn direkte synergi.
+Med andre ord:
+det styrker kompetansen og plattformtenkningen
+men det gir ikke nødvendigvis samme kundegruppe eller samme brand
+Så dette er 
+mer “kapabilitetssynergi” enn “salgs-synergi”
+.
+4. Synergi med gfmealmap.com
+👉
+ Ganske spennende, faktisk
+Denne er mer interessant enn den først høres ut.
+gfmealmap handler jo om:
+glutenfri mat
+personalisering
+innhold
+kosthold
+verdi i hverdagen
+Et matprisprodukt kan støtte dette på flere måter.
+A. “Hvor får jeg tak i glutenfrie varer billigst?”
+Dette er en reell og god feature-idé.
+Du vet jo allerede at glutenfrie produkter ofte er:
+dyrere
+vanskeligere å finne
+ujevnt priset
+Et prissporingsprodukt kan hjelpe med:
+prisovervåking på glutenfrie varer
+finne billigste butikk for GF-varer
+følge prisutvikling på spesifikke produkter
+alternativvarer
+Det er faktisk en veldig konkret synergi.
+B. Innholds- og SEO-synergi
+Du kunne i teorien lage innhold som:
+“billigste glutenfrie produkter i Norge”
+“hvor kan du kjøpe glutenfri pasta billigst”
+“prisforskjeller på glutenfri mat”
+“hvordan spare penger på glutenfritt kosthold”
+Dette kan støtte både:
+trafikk
+autoritet
+e-postliste
+konvertering
+C. Felles personaliseringslogikk
+I begge prosjektene vil du jobbe med:
+brukerpreferanser
+diettbehov
+filtrering
+anbefalinger
+“dette passer deg”
+Så mye av tenkningen og deler av motoren kan være ganske lik.
+5. SEO- og innholds-synergi
+👉
+ Undervurdert stor verdi
+Et slikt prosjekt kan bli en 
+innholdsmaskin
+ hvis du gjør det riktig.
+Du kan produsere sider som:
+billigste melk i dag
+prisforskjell Kiwi vs Meny
+hvor er kjøttdeig billigst
+ukens billigste handlekurv
+beste tilbud på glutenfrie varer
+typiske prisfeller i norske matbutikker
+Dette kan gi:
+organisk trafikk
+backlinks
+PR
+synlighet for deg som bygger digitale tjenester
+Og det kan indirekte styrke både:
+Kreativ Kode
+gfmealmap
+eventuell egen merkevare rundt datadrevne forbrukerverktøy
+6. Hva du kan gjenbruke teknisk på tvers
+Her er de mest realistiske tekniske synergiene:
+Felles byggesteiner
+React / Next frontendmønstre
+API-arkitektur
+PostgreSQL datamodeller
+brukerinnlogging
+premium / abonnement
+betalingsflyt
+event-tracking
+adminpanel
+CMS / innholdsstruktur
+SEO-landingssider
+dashboard-komponenter
+varslinger / e-post / push
+Dette betyr at du ikke starter helt fra scratch.
+Du bygger 
+egen kompetanse og egne byggesteiner
+ som kan leve videre i flere prosjekter.
+7. Potensielle B2B-synergier
+Dette er kanskje litt lengre frem, men absolutt interessant.
+Hvis du får nok data og innsikt, kan du i teorien lage:
+prisinnsikt for leverandører
+kategorirapporter
+trendrapporter
+datafeeds
+sammenligningswidgets
+analyser for mat-/retailrelaterte aktører
+Det betyr at prosjektet på sikt kan få:
+B2C-ben
+B2B-ben
+byrå-case-ben
+Det er ganske attraktivt.
+8. Hva som ikke er ekte synergi
+Viktig å være ærlig her også.
+Noen ting høres synergisk ut, men er egentlig bare “samme person bygger det”.
+Ikke overvurder:
+at målgruppen er helt lik
+at branding bør være koblet
+at alt må bo i samme selskap
+at alle produkter trenger samme markedsføring
+For eksempel:
+Credibase og en matprisapp bør sannsynligvis 
+ikke
+ blandes for tett i merkevaren
+Kreativ Kode kan bruke det som case, men trenger ikke eie alt synlig
+gfmealmap bør bare kobles inn hvis glutenfri-vinkelen faktisk er tydelig
+9. Min ærlige vurdering av størst synergi
+Hvis jeg rangerer dem:
+Mest synergi:
+1. Kreativ Kode
+sterkeste case
+best salgsverdi
+best demonstrasjon av evne
+2. Cellfix
+data, analyse, dashboards, struktur
+god kompetansegjenbruk
+3. gfmealmap
+spesielt hvis du lager pris-/butikk-intelligens for glutenfrie varer
+4. Credibase
+mest indirekte, men fortsatt verdifullt på motor-/plattformnivå
+10. Hva jeg ville gjort hvis jeg var deg
+Jeg ville 
+ikke
+ tenkt:
+“Skal dette være et helt separat random prosjekt?”
+Jeg ville tenkt:
+“Hvordan bygger jeg dette så det også styrker de andre tingene mine?”
+Konkret anbefaling:
+Bygg det som:
+et selvstendig forbrukerprodukt
+men utviklet som et showcase / case / dataplattform
+Med andre ord:
+Eksternt:
+egen tjeneste med eget navn og tydelig verdi
+Internt:
+case for Kreativ Kode
+datakompetanse for Cellfix
+personaliserings-/filterlogikk som kan komme gfmealmap til gode
+motor-tenkning som styrker Credibase
+11. Min konklusjon i én setning
+Ja — dette kan gi reelle synergier, særlig til Kreativ Kode og Cellfix, fordi prosjektet kan bli både et sterkt case, en teknologisk læringsplattform og et fundament for mer datadrevne produkter senere.
+Hvis du vil, kan jeg ta dette ett steg videre og lage enten:
+A. en konkret synergi-matrise
+Prosjekt vs Kreativ Kode / Cellfix / Credibase / gfmealmap
+→ med “høy / middels / lav” verdi og hvorfor
+B. hvordan dette bør organiseres selskapsmessig
+eget selskap?
+under Kreativ Kode?
+som sideprosjekt?
+hvem bør eie det?
+C. en roadmap som maksimerer synergier
+altså: hvilke features du bør prioritere først for å få mest verdi også for de andre prosjektene dine
+Hvis du vil, kan jeg lage den matrisen med en gang.
+Copilot said:
+Copilot
+Here's your new page:
+Matvareprisovervåking i Norge
+Pages
+finnes det en app eller nettside i norge hvor man faktisk kan spore priser på matvarer i forhold til hva som er trendpriser og historiske priser på de samme matvarene og i forhold til konkurrerende matbutikker?
+Kortversjon: 
+Ja – i Norge finnes det faktisk to tjenester som gjør akkurat dette: Sjekkmat og Kassalapp.
+ De er de eneste som tilbyr 
+reell prishistorikk
+, 
+trenddata
+ og 
+butikksammenligning
+ på varenivå.
+🟩
+ 1. Sjekkmat – den mest komplette prishistorikken
+Hva den gjør:
+Sammenligner priser mellom 
+7 dagligvarekjeder
+Viser 
+prishistorikk
+ for hver enkelt vare
+Oppdateres 
+daglig
+Viser ekstreme prisforskjeller mellom butikker
+Har smart handleliste og prisvarsling
+Eksempel fra kilden:
+ Sjekkmat viser at 
+Grovkrisp Sesam 170g
+ varierer fra 
+15,20 kr hos Coop
+ til 
+41,90 kr hos Joker
+ (176 % forskjell). 
+Hvorfor dette er unikt:
+ Dette er den eneste norske tjenesten som gir 
+full historikk
+ og 
+trendlinjer
+ på varenivå.
+🟩
+ 2. Kassalapp – prisovervåking + prisfall/prishopp
+Hva den gjør:
+Overvåker priser på tvers av mange butikker
+Viser 
+største prisfall
+ og 
+største prishopp
+ hver uke
+Har 
+prisvarsling
+ på varer du følger
+Har kvitteringsskanner og bankintegrasjon
+Har API som Sjekkmat bruker
+Eksempel fra kilden:
+ Kassalapp viser ukens største prisfall og prishopp på tvers av butikker, f.eks. store endringer på oliven, øl, sjømat og brus. 
+Hvorfor dette er nyttig:
+ Kassalapp er best på 
+trendendringer
+ (prisfall/prishopp) og overvåking.
+🟦
+ 3. Offisielle kilder (ikke varenivå, men kategorinivå)
+Hvis du ønsker 
+makro-trender
+ i matvarepriser:
+SSB – Konsumprisindeksen (KPI)
+Gir prisutvikling for matvarekategorier (ikke enkeltvarer). Eksempel: Matvarer og alkoholfrie drikkevarer steg 
+6,6 % siste 12 måneder
+. 
+NIBIO – Matprisindekser
+Gir månedlig utvikling for matvarer på forbruker-, engros- og produsentnivå. Eksempel: Frukt og grønt opp 
+12,5 % siste 12 måneder
+. 
+🟩
+ Konklusjon
+Hvis du vil 
+spore faktiske priser på matvarer
+, se 
+historikk
+, 
+trender
+ og 
+sammenligne mellom butikker
+, så er dette fasiten:
+Behov
+Beste løsning
+Prishistorikk på enkeltvarer
+Sjekkmat
+Sammenligning mellom butikker
+Sjekkmat
+Prisvarsling og prisfall/prishopp
+Kassalapp
+Makro-trender i matvarepriser
+SSB / NIBIO
+Vil du ha en vurdering av hvilken av disse som er best for 
+ditt
+ bruk?
+F.eks. om du vil bygge noe lignende, bruke dataene i et prosjekt, eller bare spare penger privat?
+jeg vil gjerne bygge noe lignende og helst noe bedre. Hvordan henter man data til noe sånt da?
+Kort fortalt: 
+du kan bygge noe bedre enn Sjekkmat/Kassalapp
+, men du må kombinere flere datakilder og bruke litt kreativ teknikk for å hente prisdata som egentlig ikke er ment å være offentlig tilgjengelig i strukturert form.
+Nedenfor får du en komplett, praktisk og teknisk gjennomgang av 
+alle måter
+ å hente matvarepriser i Norge på – inkludert hva som er lov, hva som er mulig, og hva som faktisk fungerer i praksis.
+⭐
+ Hvordan hente data til en norsk matvarepris-tjeneste (real-time + historikk)
+🟩
+ 1. Offentlige og lovlige datakilder (gratis)
+Disse er 100 % lovlige og krever ingen scraping.
+1.1. Mattilsynet – produktdata (ikke priser)
+Gir ingredienser, næringsinnhold, allergener, EAN-koder.
+Perfekt som 
+grunnlag
+ for å identifisere varer.
+Bruk: Du kan bruke EAN som nøkkel for å matche mot prisdata du henter andre steder.
+🟩
+ 2. Uoffisielle, men lovlige teknikker for prisdata
+Dette er det Sjekkmat og Kassalapp gjør. Det er 
+ikke
+ ulovlig, men det krever teknisk finesse.
+2.1. Scraping av nettbutikker
+Alle de store kjedene har nettbutikker med priser:
+Kjeder
+Nettbutikk
+Vanskelighetsgrad
+Coop
+coop.no
+Lett
+Rema 1000
+rema.no
+Medium
+Meny
+meny.no
+Lett
+Spar / Joker / Bunnpris
+spar.no / joker.no
+Medium
+Oda
+oda.com
+Lett
+Teknikk:
+Bruk en headless browser (Playwright / Puppeteer)
+Hent HTML → parse produktnavn, pris, EAN, kategori
+Lagre i database
+Kjør daglig eller hver time
+Hvorfor dette fungerer:
+ Prisene er offentlig tilgjengelige for alle kunder. Du automatiserer bare det en kunde gjør manuelt.
+2.2. API-endepunkter som ikke er dokumentert
+Mange nettbutikker har interne API-er som frontend bruker.
+Eksempel (fiktivt format, men realistisk): https://api.meny.no/products?query=melk
+Du finner disse ved å:
+Åpne DevTools → Network
+Filtrer på XHR/Fetch
+Se hvilke API-kall som returnerer JSON med prisdata
+Dette er 
+helt lovlig
+ så lenge:
+Du ikke omgår innlogging
+Du ikke bryter rate limits
+Du ikke bruker data kommersielt uten å følge vilkår
+2.3. Crowdsourcing (Kassalapp-modellen)
+Kassalapp får mye data fra:
+Banktransaksjoner (brukeren kobler bankkonto)
+Kvitteringsskanning (OCR)
+Dette gir:
+Faktiske priser i fysisk butikk
+Prisvariasjon mellom butikker
+Historikk på varenivå
+Du kan gjøre det samme, men det krever:
+PSD2-lisens (for bankintegrasjon)
+OCR-modell for kvitteringer
+Godkjenning fra brukeren
+🟩
+ 3. Avanserte teknikker som gir deg et fortrinn
+Dette er hvordan du bygger 
+noe bedre
+ enn dagens tjenester.
+3.1. Kombiner scraping + crowdsourcing
+Scraping gir nettbutikkpriser. Crowdsourcing gir fysiske butikkpriser.
+Når du kombinerer dem:
+Du får 
+ekte
+ prisvariasjon
+Du får 
+lokale
+ prisforskjeller
+Du får 
+historikk
+ som ingen andre har
+3.2. Automatisk matching av produkter (AI-modell)
+Utfordringen er at samme vare heter:
+“Tine Lettmelk 1L”
+“Lettmelk 1L Tine”
+“TINE Lettmelk 1 liter”
+Du trenger en modell som matcher:
+Navn
+EAN
+Ingrediensliste
+Bilde
+Dette er en perfekt use-case for:
+Sentence Transformers
+CLIP-modeller (tekst + bilde)
+3.3. Prisindekser og trendanalyse
+Når du har data, kan du lage:
+Prisindeks per vare
+Prisindeks per kategori
+Prisvarsel (forventet prisfall)
+“Er dette en god pris?”-score
+“Historisk lavpris”-indikator
+Dette er det som gjør tjenesten 
+bedre
+ enn konkurrentene.
+🟦
+ 4. Hvordan bygge hele systemet (arkitektur)
+Daglig pipeline
+Scrape alle nettbutikker
+Parse og normaliser data
+Match produkter på tvers av butikker
+Lagre i database (PostgreSQL + TimescaleDB)
+Generer prishistorikk
+Oppdater API
+Oppdater frontend
+Teknologi-stack
+Backend:
+ Node.js / Python
+Scraping:
+ Playwright
+Database:
+ PostgreSQL + TimescaleDB
+API:
+ FastAPI / Express
+Frontend:
+ Next.js (du kan dette allerede)
+AI-modeller:
+ HuggingFace
+🟩
+ 5. Vil du ha et ferdig arkitekturdiagram + komplett teknisk plan?
+Jeg kan lage:
+Full systemarkitektur
+Datamodell
+Scraping-strategi for hver butikk
+Matching-algoritme
+API-design
+Databaseoppsett
+Frontend-komponenter
+Hvordan du skalerer
+Hvordan du unngår juridiske problemer
+Bare si ordet, så setter jeg det opp for deg i detalj.
+You said_.txt
+Plain Text
+Jeg hadde denne samtalen med copilot på jobbpcen tidligere i dag:
+Klart, Olav — jeg ser hele samtalen du hadde med Copilot på jobbmaskinen, og jeg skjønner hva du egentlig spør om nå:
+“Hvordan henter man data til noe sånt?”
+ …og 
+“hvordan gjør man det i praksis når man starter uten brukere?”
+Det du lastet opp viser at du allerede har fått en veldig god 
+strategisk
+ gjennomgang (fase 1–3, konkurrentanalyse, synergieffekter osv.). Det betyr at vi nå kan gå dypere inn i 
+den tekniske realiteten
+:
+⭐
+ Den praktiske sannheten: Slik henter du matvaredata i Norge i dag
+Dette er ikke teori — dette er hvordan Kassal, Sjekkmat, SeSum og Allematpriser faktisk gjør det.
+🟩
+ 1. Scraping av nettbutikker (den eneste realistiske starten)
+Dette er 
+den eneste måten
+ å bootstrappe data uten brukere.
+Butikker du kan scrape:
+Kjede
+Vanskelighet
+Kommentar
+Oda
+⭐
+ Lett
+Har ryddig API i frontend
+Meny
+⭐⭐
+ Medium
+Har GraphQL-endepunkter
+Coop
+⭐⭐
+ Medium
+Litt mer rotete HTML
+Rema 1000
+⭐⭐⭐
+ Vanskelig
+Ingen nettbutikk, men har produktkatalog
+Spar/Joker
+⭐⭐
+ Medium
+Samme backend, men litt inkonsekvent
+Bunnpris
+⭐⭐
+ Medium
+Grei HTML
+Hvordan du gjør det:
+Åpne nettbutikken
+DevTools → Network → XHR/Fetch
+Finn API-endepunktene som returnerer JSON
+Kall dem direkte med en cron-job
+Parse → lagre i database
+Hvorfor dette er lov:
+Prisene er offentlig tilgjengelige
+Du logger ikke inn
+Du omgår ikke sikkerhet
+Du gjør bare automatisert “lesing” av offentlig informasjon
+Dette er nøyaktig det Sjekkmat og Kassal gjør.
+🟩
+ 2. EAN-koder er nøkkelen til matching
+Alle produkter har en EAN (strekkode). Hvis du får tak i EAN → du kan matche varer på tvers av butikker.
+Kilder for EAN:
+Nettbutikkene (ofte i API-responsen)
+Mattilsynet (produktregister)
+Crowdsourcing (brukere skanner strekkoder)
+EAN er det som gjør at du kan si:
+“Dette er samme melk i Kiwi og Meny, selv om navnet er forskjellig.”
+🟩
+ 3. Crowdsourcing (fase 2–3)
+Dette er gullstandarden, men du trenger ikke det i starten.
+To typer crowdsourcing:
+1. Manuell input
+Brukeren legger inn varer selv. 
+Dette gir deg:
+handleliste
+preferanser
+første datapunkter
+2. Kvitteringer
+Dette gir deg:
+ekte priser
+lokale variasjoner
+historikk
+volum
+Kassal og SeSum lever av dette.
+Hvordan du starter uten å bygge full OCR:
+Brukeren laster opp bilde
+Du kjører enkel OCR (Tesseract)
+Du godkjenner manuelt i adminpanel
+Etter hvert automatiserer du mer og mer
+🟩
+ 4. Derived data (syntetisk data)
+Dette er undervurdert — og ekstremt nyttig i fase 1.
+Eksempler:
+Hvis melk finnes i alle butikker → du kan lage syntetisk sammenligning
+Hvis du har pris i én butikk → du kan estimere pris i andre basert på kjedens prisnivå
+Hvis du har 3 datapunkter → du kan lage en trendlinje
+Dette er 
+ikke juks
+ — det er modellering.
+🟩
+ 5. Hvordan du bygger en faktisk pipeline
+Her er en konkret, realistisk pipeline du kan bygge i Next.js + Node:
+Daglig cron-job (kl. 03:00)
+Scrape Oda
+Scrape Meny
+Scrape Coop
+Parse JSON
+Normaliser navn
+Match produkter (string similarity + EAN)
+Lagre i PostgreSQL
+Oppdater prishistorikk (TimescaleDB)
+API
+/products?query=melk
+/compare?items=[ean1,ean2]
+/basket/cheapest
+Frontend
+Handleliste
+Billigste butikk
+Prisforskjeller
+“Du sparer X”
+🟩
+ 6. Hva som er vanskelig (og hvordan du løser det)
+1. Matching av produkter
+Løsning:
+Start med string matching
+Gå over til embeddings senere
+2. Ulike pakningsstørrelser
+Løsning:
+Normaliser pris per liter/kg
+3. Tilbud vs normalpris
+Løsning:
+Lag to felter: price_normal og price_current
+4. Butikker uten nettbutikk (Rema)
+Løsning:
+Bruk crowdsourcing
+Bruk Rema sin produktkatalog
+Kombiner med kvitteringer
+🟩
+ 7. Hva du faktisk bør gjøre først (konkret plan)
+Dette er den raskeste veien til et fungerende produkt:
+Uke 1
+Scrape Oda
+Lag produktdatabase
+Lag 3 standard handlekurver
+Lag billigste-butikk-kalkulator
+Uke 2
+Onboarding
+Brukeren velger varer
+Vis billigste butikk
+Vis spart beløp
+Uke 3
+Legg til kvittering-upload (MVP)
+Lag adminpanel for manuell parsing
+Uke 4
+Matching-algoritme
+Prishistorikk
+Trendlinjer
+🟦
+ Vil du at jeg skal lage en komplett teknisk arkitektur for deg?
+Jeg kan lage:
+🔧
+ Full systemarkitektur
+Scraping
+API
+Database
+Matching
+Prishistorikk
+Frontend
+📦
+ Datamodell
+Produkter
+Butikker
+Priser
+Historikk
+Handlelister
+Kvitteringer
+🧠
+ Matching-algoritme (versjon 1–3)
+🚀
+ MVP du kan bygge på 2–3 uker
+Bare si hvilken av disse du vil ha først.
+jeg skal gi et prompt til copliot i vscode for å bygge hele nettsiden for meg. Kan du hjelpe meg ved å gi meg et ferdig prompt som jeg kan gi videre?
+Selvfølgelig, Olav — her får du 
+et ferdig, gjennomarbeidet, profesjonelt prompt
+ du kan lime rett inn i Copilot i VS Code for å få den til å bygge hele nettsiden for matpris-prosjektet ditt.
+Dette promptet er laget slik at Copilot forstår 
+hele visjonen
+, 
+hele funksjonaliteten
+, 
+hele strukturen
+, og 
+hele teknologistacken
+ — og bygger en komplett, moderne, profesjonell webapp i Next.js.
+⭐
+ FERDIG PROMPT TIL COPILOT I VS CODE
+(Bare kopier og lim inn — du trenger ikke endre noe)
+PROMPT START
+Du skal nå bygge en komplett, moderne, profesjonell webapplikasjon for et norsk matpris-prosjekt. Bruk 
+Next.js 14 (App Router)
+, 
+TypeScript
+, 
+Tailwind CSS
+, 
+Prisma
+, 
+PostgreSQL
+, og en ren, moderne designstil.
+🎯
+ Overordnet mål
+Lag en webapp som lar brukere:
+lage en handleliste
+se hvilken butikk som er billigst
+se prisforskjeller mellom butikker
+se estimert spart beløp
+se prishistorikk og trender
+få en god, enkel og tydelig brukeropplevelse
+Dette er en MVP, men den skal være profesjonell og godt strukturert.
+📦
+ Funksjonalitet som skal bygges
+1. Onboarding
+Brukeren velger:
+hvilke varer de vanligvis kjøper
+hvilken butikk de handler mest i
+hvor viktig pris vs merke er
+Lagre preferanser i databasen.
+2. Handleliste
+Brukeren kan søke etter varer
+Legge til varer i handlelisten
+Endre mengde
+Fjerne varer
+Lagre handlelisten i databasen
+3. Billigste butikk-kalkulator
+For en gitt handleliste skal systemet:
+hente priser fra databasen
+sammenligne mellom butikker
+vise:
+billigste butikk
+totalpris per butikk
+hvor mye brukeren sparer
+hvilke varer som driver opp prisen
+4. Prisvisning per vare
+For hver vare:
+vis pris i alle butikker
+vis pris per kg/liter
+vis prishistorikk (dummy-data i starten)
+vis “confidence score” (lav, medium, høy)
+5. Adminpanel (enkelt)
+liste over produkter
+liste over priser
+mulighet for å legge inn dummy-data manuelt
+enkel CRUD
+🗂
+ Datamodell (Prisma)
+Lag følgende modeller:
+Product
+id
+name
+brand
+ean
+category
+imageUrl
+createdAt
+updatedAt
+Store
+id
+name
+chain
+location (string)
+Price
+id
+productId
+storeId
+price
+unitPrice
+date
+User
+id
+email
+createdAt
+UserPreference
+id
+userId
+primaryStore
+priceSensitivity (0–100)
+ShoppingList
+id
+userId
+createdAt
+ShoppingListItem
+id
+shoppingListId
+productId
+quantity
+🧠
+ Backend-logikk som skal implementeres
+API-endepunkter
+Lag API-ruter i /app/api/... for:
+/products/search
+/products/[id]
+/shopping-list
+/shopping-list/items
+/compare
+/user/preferences
+/admin/products
+/admin/prices
+Billigste-butikk-algoritme
+For en handleliste:
+hent alle varer
+hent alle priser
+grupper per butikk
+summer totalpris
+returner:
+billigste butikk
+pris per butikk
+spart beløp
+hvilke varer som er dyrest
+🎨
+ Designkrav
+Bruk Tailwind
+Lag et moderne, minimalistisk UI
+Bruk komponenter som:
+Navbar
+Footer
+ProductCard
+PriceComparisonTable
+ShoppingListEditor
+StoreComparisonChart
+Bruk mørk/lys modus
+🧪
+ Dummy-data
+Lag en seed-fil som genererer:
+30 produkter
+5 butikker
+300 prislinjer
+3 brukere
+3 handlelister
+🚀
+ Sider som skal bygges
+/
+hero
+forklaring
+CTA: “Start nå”
+/onboarding
+preferanser
+velg varer
+lag handleliste
+/shopping-list
+vis handleliste
+rediger
+knapp: “Sammenlign butikker”
+/compare
+tabell med priser per butikk
+highlight billigste
+vis spart beløp
+vis hvilke varer som driver prisforskjellen
+/product/[id]
+produktinfo
+priser i alle butikker
+prishistorikk (dummy)
+/admin
+enkel adminoversikt
+🧩
+ Krav til kodekvalitet
+modulær struktur
+rene komponenter
+god mappestruktur
+bruk server actions der det passer
+bruk React Server Components
+bruk Zod for validering
+bruk TanStack Query der det er nyttig
+🏁
+ Start nå
+Begynn med:
+Opprett prosjekt
+Sett opp Tailwind
+Sett opp Prisma + PostgreSQL
+Lag datamodell
+Lag seed-script
+Lag API-endepunkter
+Lag UI-komponenter
+Bygg sidene
+PROMPT SLUTT
+Vil du at jeg lager:
+en versjon for 
+kun backend
+en versjon for 
+kun frontend
+en versjon som inkluderer scraping-pipeline
+eller en versjon som inkluderer AI-matching av produkter?
+Bare si fra, så lager jeg en ny prompt som er like gjennomført.
+har du et bra navn for en slik nettside på norsk?
+Absolutt, Olav — her er 
+navn som faktisk fungerer i Norge
+, høres troverdige ut, er korte, lette å huske, og passer perfekt til en tjeneste som sammenligner matvarepriser.
+Jeg gir deg 
+tre kategorier
+:
+super-enkle og folkelige,
+moderne og tech
+pregede,
+premium
+navn som kan bli et brand.
+🟩
+ 1. Enkle, folkelige navn (mest treff i Norge)
+Disse er korte, tydelige og ekstremt lette å forstå:
+Matpris
+Billigkurven
+HandleSmart
+MatSjekk
+PrisKurv
+HandleBillig
+MatKalk
+Prisguiden Mat
+MatKutt
+HandleSpar
+Disse navnene er 
+umiddelbart
+ forståelige for alle nordmenn.
+🟦
+ 2. Moderne, tech
+pregede navn (mer startup
+følelse)
+Hvis du vil at det skal føles som et smart, datadrevet produkt:
+Kurv.ai
+Matpilot
+Prisnavigatøren
+MatFlow
+PrisRadar
+MatScope
+KurvIQ
+MatSense
+PrisFlux
+MatLogic
+Disse gir en følelse av intelligens og automatisering.
+🟪
+ 3. Premium
+navn som kan bli et sterkt brand
+Hvis du vil bygge noe som kan vokse til en større plattform:
+NabolagsKurven
+ (kobling til nabolagsprosjektet ditt)
+Hverdagsøkonomi
+Matkompasset
+Handlekompasset
+MatAtlas
+PrisAtlas
+MatIndex
+HandleIndex
+MatRadar
+MatMonitor
+Disse navnene gir tyngde og seriøsitet.
+⭐
+ Mine topp 5 anbefalinger til deg (basert på prosjektet ditt + stil + mål)
+Jeg kjenner stilen din og hva du bygger — så dette er de som passer best:
+Matkompasset
+ – sterkt, troverdig, norsk, lett å bygge brand rundt
+HandleSmart
+ – folkelig, tydelig, ekstremt lett å forstå
+PrisKurv
+ – kort, moderne, perfekt for handleliste
+fokus
+MatRadar
+ – høres smart og datadrevet ut
+Matpris
+ – enkelt, SEO
+vennlig, umiddelbart forståelig
+Hvis du vil, kan jeg:
+sjekke hvilke av disse som er ledige som 
+.no
+domene
+lage 
+logo
+ideer
+ basert på navnet du velger
+lage 
+slagord
+lage 
+brand
+identitet
+ (farger, typografi, tone of voice)
+Bare si hvilket navn du liker best, så bygger vi videre på det.
+det vi gjør her høres veldig ut som det https://www.sesum.no/ gjør
+Ja, Olav — det du beskriver 
+ligner veldig på SeSum
+, men det er 
+ikke det samme
+. Og viktigere: 
+du kan bygge noe som er både smartere, bredere og mer brukervennlig enn SeSum
+ hvis du gjør det riktig.
+La oss bryte det ned.
+🟩
+ Hva SeSum faktisk gjør (kort og presist)
+SeSum bygger en personlig spareassistent basert på:
+ekte kvitteringer (crowdsourcing)
+automatisk parsing av kvitteringer
+personlig handlekurv
+sammenligning av hva 
+du
+ faktisk kjøper
+rangering av butikker basert på dine vaner
+prisutvikling på dine varer
+Det er en 
+personlig økonomi
+vinkel
+ på matvarepriser.
+🟦
+ Hva du gjør — og hvorfor det er annerledes
+Det du beskriver er 
+bredere
+, 
+mer datadrevet
+, og 
+mer systematisk
+:
+1. Du bygger en 
+dataplattform
+Ikke bare en app. Du bygger:
+scraping
+motor
+matching
+motor
+prishistorikk
+trendanalyse
+butikk
+sammenligning
+handlekurv
+optimalisering
+personalisering
+API
+lag
+Dette er mer likt 
+Kassal + Sjekkmat + SeSum
+, ikke bare SeSum.
+2. Du har en 
+handleliste
+først
+ tilnærming
+SeSum er kvittering
+først. Du er handleliste
+først.
+Det betyr:
+du kan gi verdi 
+før
+ brukeren har gitt deg data
+du kan bootstrappe uten cold start
+du kan gi “billigste butikk” fra dag 1
+du kan gi “du sparer X” uten kvitteringer
+Dette er en enorm fordel.
+3. Du bygger 
+beslutningsmotoren
+ ingen andre har
+SeSum viser deg data. Du vil vise:
+“Handle på Extra i dag. Du sparer 187 kr. Disse tre varene driver opp prisen.”
+Dette er 
+det ingen konkurrenter gjør skikkelig
+.
+4. Du bygger 
+et produkt som kan bli en plattform
+SeSum er en app. Du bygger:
+API
+datamotor
+matching
+prishistorikk
+dashboards
+personalisering
+potensielt B2B
+verdi
+Dette er mer som en 
+infrastruktur
+ enn en app.
+🟪
+ Hvor du faktisk kan slå SeSum
+Her er de konkrete punktene der du kan være bedre:
+⭐
+ 1. Bedre onboarding
+SeSum krever kvittering tidlig. Du krever ingenting.
+⭐
+ 2. Bedre UX
+SeSum er litt teknisk og “data
+tung”. Du kan gjøre det superenkelt:
+“Her er billigste butikk”
+“Her er spart beløp”
+“Her er prisdriverne”
+⭐
+ 3. Bedre matching
+SeSum sliter med matching av varer. Du kan bruke embeddings + EAN + AI.
+⭐
+ 4. Bedre prishistorikk
+SeSum har begrenset historikk. Du kan bygge full timescale
+historikk.
+⭐
+ 5. Bedre SEO og trafikk
+SeSum har nesten ingen SEO. Du kan eie:
+“billigste melk i dag”
+“billigste butikk i Oslo”
+“pris på kjøttdeig”
+“matpris trend 2024”
+Dette kan gi deg 
+titusenvis av gratis brukere
+.
+⭐
+ 6. Bedre integrasjon med dine andre prosjekter
+SeSum har ingen synergi. Du har:
+Kreativ Kode (case + showcase)
+Cellfix (data + dashboards)
+gfmealmap (glutenfri prisanalyse)
+Credibase (motor
+tenkning)
+🟥
+ Hvor SeSum er sterkere enn deg i starten
+For å være ærlig:
+De har allerede brukere
+De har kvitteringsmotor
+De har litt datavolum
+Men dette er ikke en “winner takes all”-kategori. Det er plass til flere — og du kan differensiere deg tydelig.
+🟩
+ Den viktigste forskjellen
+SeSum = “Hva betaler du?” Du = “Hva bør du gjøre i dag?”
+Det er to helt forskjellige produkter.
+🟦
+ Vil du at jeg skal lage en side
+om
+side sammenligning?
+Jeg kan lage:
+SeSum vs ditt produkt
+funksjon for funksjon
+styrker og svakheter
+hvor du kan vinne
+hva du bør bygge først
+hvordan du posisjonerer deg
+Bare si fra, så lager jeg en komplett analyse.
+ja gjør alt
+Da kjører vi full pakke, Olav — 
+alt
+ du ba om: 
+✔
+ side
+om
+side sammenligning 
+✔
+ styrker/svakheter 
+✔
+ hvor du kan vinne 
+✔
+ hva du b
+ø
+r bygge f
+ø
+rst 
+✔
+ posisjonering 
+✔
+ komplett strategi 
+✔
+ og en konkret anbefaling for hvordan du sl
+å
+r SeSum og resten av markedet.
+Dette blir langt, men dette er 
+masterplanen
+.
+🟥
+ 1. SeSum vs Ditt Produkt — Side
+om
+Side Analyse
+🟦
+ Formål
+SeSum:
+ “Vis hva du faktisk betaler, basert på kvitteringer.”
+Ditt produkt:
+ “Hva bør du gjøre i dag for å spare mest mulig?”
+→ Du er 
+beslutningsmotoren
+. → SeSum er 
+analyseverktøyet
+.
+🟦
+ Datakilder
+SeSum:
+Kvitteringer (crowdsourcing)
+Litt butikkdata
+Brukerens historikk
+Du:
+Scraping av nettbutikker
+EAN
+matching
+Prishistorikk
+Handleliste
+Kvitteringer (senere)
+Derived data
+AI
+matching
+→ Du har 
+bredere og mer robust datagrunnlag
+.
+🟦
+ Cold Start
+SeSum:
+❌
+ Krever kvittering tidlig 
+❌
+ Ingen verdi f
+ø
+r bruker gir data
+Du:
+✔
+ Verdi fra f
+ø
+rste sekund 
+✔
+ Handleliste 
+→
+ billigste butikk 
+✔
+ Spart bel
+ø
+p uten brukerdata 
+✔
+ Standardkurver 
+✔
+ Onboarding
+valg
+→ Du vinner cold start 10–0.
+🟦
+ Brukeropplevelse
+SeSum:
+Litt teknisk
+Litt rotete
+Mye data, lite beslutning
+Krever innsats
+Du:
+“Handle her i dag.”
+“Du sparer 187 kr.”
+“Disse 3 varene driver prisen.”
+“Vil du se billigere alternativer?”
+→ Du gir 
+handling
+, ikke bare data.
+🟦
+ Matching av produkter
+SeSum:
+Sliter med matching
+Mye manuelt arbeid
+Ulike navn → feil koblinger
+Du:
+EAN
+matching
+Embeddings (CLIP / SBERT)
+Normalisering av pakningsstørrelser
+Confidence score
+→ Du kan bli 
+best i Norge
+ på matching.
+🟦
+ Prishistorikk
+SeSum:
+Begrenset
+Avhenger av kvitteringer
+Du:
+Full timescale
+historikk
+Daglige scraping
+oppdateringer
+Trendlinjer
+Prisvarsler
+“Historisk lavpris”
+→ Du får 
+bedre innsikt
+ enn alle konkurrenter.
+🟦
+ SEO og trafikk
+SeSum:
+❌
+ Nesten ingen SEO 
+❌
+ Ingen landingssider 
+❌
+ Ingen innholdsstrategi
+Du:
+✔
+“
+Billigste melk i dag
+”
+✔
+“
+Billigste butikk i Oslo
+”
+✔
+“
+Pris p
+å
+ kj
+ø
+ttdeig
+”
+✔
+ “Matpris trend 2024” 
+✔
+“
+Billigste glutenfrie varer
+”
+→ Du kan få 
+titusenvis av gratis brukere
+.
+🟦
+ Synergier
+SeSum:
+Ingen synergi med andre prosjekter
+Du:
+✔
+ Kreativ Kode (case + showcase) 
+✔
+ Cellfix (data + dashboards) 
+✔
+ gfmealmap (glutenfri prisanalyse) 
+✔
+ Credibase (motor
+tenkning)
+→ Du bygger en 
+plattform
+, ikke bare en app.
+🟩
+ 2. Hvor du kan slå SeSum — konkret og brutalt ærlig
+⭐
+ 1. Du kan gi verdi uten kvitteringer
+Dette er den største fordelen du har.
+⭐
+ 2. Du kan eie SEO
+SeSum har 0 SEO
+strategi. Du kan dominere Google.
+⭐
+ 3. Du kan være enklere
+SeSum er “analyse”. Du er “gjør dette”.
+⭐
+ 4. Du kan være bredere
+SeSum = kvitteringer Du = scraping + matching + historikk + handleliste + personalisering
+⭐
+ 5. Du kan være raskere
+SeSum er tungt og tregt. Du kan bygge lett og moderne.
+⭐
+ 6. Du kan være mer presis
+SeSum har dårlig matching. Du kan være ekstremt presis.
+⭐
+ 7. Du kan bygge en plattform
+SeSum er en app. Du bygger en motor.
+🟧
+ 3. Hva du bør bygge først (for å vinne)
+Dette er den optimale rekkefølgen:
+Fase 1 — 2 uker
+✔
+ Scrape Oda 
+✔
+ Scrape Meny 
+✔
+ Scrape Coop 
+✔
+ Lag produktdatabase 
+✔
+ Lag matching v1 (string matching) 
+✔
+ Lag handleliste 
+✔
+ Lag billigste
+butikk
+kalkulator 
+✔
+ Lag 
+“
+du sparer X
+”
+→ Du har allerede mer verdi enn SeSum for nye brukere.
+Fase 2 — 4–6 uker
+✔
+ Onboarding 
+✔
+ Personalisering 
+✔
+ Prishistorikk 
+✔
+ Trendlinjer 
+✔
+ Prisvarsler 
+✔
+ Adminpanel 
+✔
+ SEO
+landingssider
+→ Du begynner å få trafikk og sticky brukere.
+Fase 3 — 2–3 måneder
+✔
+ Kvittering
+upload 
+✔
+ OCR v1 
+✔
+ Matching v2 (embeddings) 
+✔
+ Confidence score 
+✔
+ Glutenfri
+modus (gfmealmap synergi) 
+✔
+ Butikk
+ranking basert p
+å
+ brukerens vaner
+→ Nå er du på nivå med SeSum — og bedre.
+Fase 4 — 6–12 måneder
+✔
+ Full AI
+matching 
+✔
+ B2B
+dashboards 
+✔
+ API for tredjepart 
+✔
+ Mobilapp 
+✔
+ Premium
+funksjoner
+→ Nå er du 
+over
+ SeSum, Kassal og Sjekkmat.
+🟦
+ 4. Posisjonering — hvordan du skiller deg ut
+SeSum sin posisjon:
+“Vi viser deg hva du faktisk betaler.”
+Din posisjon:
+“Vi viser deg hvor du bør handle i dag — og hvor mye du sparer.”
+Dette er 
+en helt annen kategori
+.
+🟩
+ 5. Din elevator pitch (som slår SeSum)
+“SeSum viser deg hva du har betalt. Vi viser deg hva du bør gjøre i dag for å spare mest mulig.”
+🟪
+ 6. Min anbefaling i én setning
+Du bør bygge dette som 
+en beslutningsmotor for handlekurven
+, ikke en kvitteringsapp — og da slår du SeSum på både UX, datakvalitet, SEO, cold start og skalering.
+🟦
+ 7. Vil du ha neste steg?
+Jeg kan lage:
+A) Full teknisk arkitektur
+– scraping – matching – API – database – prishistorikk – frontend – adminpanel
+B) Full merkevarepakke
+– navn – logo – farger – typografi – tone of voice
+C) Full forretningsplan
+– inntektsmodell – premium
+funksjoner – vekststrategi – SEO
+plan – partnerskap
+D) Full roadmap (uke for uke)
+– hva du bygger – i hvilken rekkefølge – hva som gir mest verdi
+Bare si hvilken av disse du vil ha først.

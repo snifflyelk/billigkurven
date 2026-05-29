@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-main: #f5f7f2;
+  --bg-accent: #dbf4e4;
+  --surface: #ffffff;
+  --ink: #112220;
+}
+
+.dark {
+  --bg-main: #08110f;
+  --bg-accent: #132320;
+  --surface: #0d1816;
+  --ink: #ecfffa;
+}
+
+body {
+  font-family: var(--font-manrope), sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(18, 156, 104, 0.25), transparent 35%),
+    radial-gradient(circle at 100% 25%, rgba(132, 204, 22, 0.18), transparent 32%),
+    linear-gradient(165deg, var(--bg-main), var(--bg-accent));
+  min-height: 100vh;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+li,
+td,
+th {
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+h3,
+.display-font {
+  font-family: var(--font-space), sans-serif;
+}
+
+@layer utilities {
+  .bg-app {
+    background:
+      radial-gradient(circle at 10% 8%, rgba(16, 185, 129, 0.16), transparent 36%),
+      radial-gradient(circle at 89% 18%, rgba(236, 253, 245, 0.5), transparent 28%);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .fade-rise {
+    animation: fade-rise 500ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  }
+
+  .fade-rise-delayed {
+    animation: fade-rise 650ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  }
+
+  .fade-rise-slow {
+    animation: fade-rise 800ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
+  }
+}
+
+@keyframes fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 360px) {
+  .mobile-bottom-bar {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+  }
+
+  .mobile-bottom-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-bottom-action {
+    font-size: 12px;
+    line-height: 1.2;
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+    white-space: normal;
+  }
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+
+  main,
+  section,
+  article,
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

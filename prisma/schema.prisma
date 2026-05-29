@@ -1,0 +1,199 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Product {
+  id        String             @id @default(cuid())
+  name      String
+  brand     String
+  ean       String             @unique
+  category  String
+  imageUrl  String?
+  packageQuantity Float?
+  packageUnit PackageUnit?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  prices             Price[]
+  shoppingListItems  ShoppingListItem[]
+  priceAlerts        PriceAlert[]
+}
+
+model Store {
+  id       String  @id @default(cuid())
+  name     String
+  chain    String
+  location String
+  postalCode String?
+
+  prices Price[]
+
+  @@index([postalCode])
+}
+
+model Price {
+  id        String   @id @default(cuid())
+  productId String
+  storeId   String
+  source    String   @default("seed")
+  sourceUrl String?
+  price     Decimal  @db.Decimal(10, 2)
+  unitPrice Decimal  @db.Decimal(10, 2)
+  promoPrice Decimal? @db.Decimal(10, 2)
+  loyaltyPrice Decimal? @db.Decimal(10, 2)
+  promoLabel String?
+  promoValidFrom DateTime?
+  promoValidTo DateTime?
+  requiresMembership Boolean @default(false)
+  date      DateTime @default(now())
+  isQuarantined Boolean @default(false)
+  quarantineReasons Json?
+  auditedAt DateTime?
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([productId, storeId, date])
+}
+
+model User {
+  id        String          @id @default(cuid())
+  email     String          @unique
+  createdAt DateTime        @default(now())
+
+  preference   UserPreference?
+  shoppingLists ShoppingList[]
+  receipts     ReceiptSubmission[]
+  priceAlerts  PriceAlert[]
+}
+
+model PriceAlert {
+  id            String   @id @default(cuid())
+  userId        String
+  productId     String
+  targetPrice   Decimal? @db.Decimal(10, 2)
+  targetDropPct Float?
+  notifyOnBuyNow Boolean @default(true)
+  isActive      Boolean  @default(true)
+  lastTriggeredAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([isActive, createdAt])
+}
+
+model UserPreference {
+  id               String @id @default(cuid())
+  userId           String @unique
+  primaryStore     String
+  priceSensitivity Int
+  useMembershipPricing Boolean @default(true)
+  shoppingTripBudget Int?
+  weeklyGroceryBudget Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CoveragePriority {
+  id        String                 @id @default(cuid())
+  scopeType CoverageScopeType
+  scopeKey  String
+  title     String
+  status    CoveragePriorityStatus @default(OPEN)
+  owner     String?
+  notes     String?
+  lastActionType String?
+  lastActionAt DateTime?
+  lastActionSummary String?
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+
+  @@unique([scopeType, scopeKey])
+  @@index([status, updatedAt])
+}
+
+model ShoppingList {
+  id        String   @id @default(cuid())
+  userId    String
+  createdAt DateTime @default(now())
+
+  user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ShoppingListItem[]
+}
+
+model ShoppingListItem {
+  id             String @id @default(cuid())
+  shoppingListId String
+  productId      String
+  quantity       Int
+
+  shoppingList ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([shoppingListId, productId])
+}
+
+model ReceiptSubmission {
+  id            String        @id @default(cuid())
+  userId        String
+  fileName      String
+  imageDataUrl  String?
+  recognizedText String?
+  recognizedItems Json?
+  status        ReceiptStatus  @default(PENDING)
+  detectedStore String?
+  detectedTotal Decimal?      @db.Decimal(10, 2)
+  estimatedCheapestTotal Decimal? @db.Decimal(10, 2)
+  estimatedDetectedStoreTotal Decimal? @db.Decimal(10, 2)
+  verifiedSavings Decimal?    @db.Decimal(10, 2)
+  matchedItems   Int?
+  totalItems     Int?
+  savingsConfidence String?
+  savingsNote    String?
+  savingsComputedAt DateTime?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  reviewedAt    DateTime?
+  reviewedBy    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ReceiptStatus {
+  PENDING
+  REVIEWED
+  REJECTED
+}
+
+enum PackageUnit {
+  G
+  ML
+  STK
+}
+
+enum CoverageScopeType {
+  CHAIN
+  POSTAL_CODE
+}
+
+enum CoveragePriorityStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  RESOLVED
+}
