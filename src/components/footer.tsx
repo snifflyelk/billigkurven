@@ -1,33 +1,70 @@
 import Link from "next/link";
 
-const footerLinks = [
-  { href: "/", label: "Hjem" },
-  { href: "/onboarding", label: "Onboarding" },
-  { href: "/shopping-list", label: "Handleliste" },
-  { href: "/compare", label: "Sammenlign" },
-  { href: "/benchmark", label: "Benchmark" },
-  { href: "/receipts", label: "Kvitteringer" },
-  { href: "/savings/proof", label: "Sparebevis" },
-  { href: "/confidence", label: "Data" },
-  { href: "/admin", label: "Admin" },
-];
-
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-slate-200 bg-white/75 py-10 dark:border-slate-800 dark:bg-slate-950/75">
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 sm:px-6 md:grid-cols-[1fr_auto] md:items-end">
-        <div className="space-y-2">
-          <p className="text-base font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">Billigkurven</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">MVP - Smart matpris sammenligning for norske husholdninger.</p>
+    <footer className="mt-16 border-t border-slate-200 bg-white/75 py-12 dark:border-slate-800 dark:bg-slate-950/75">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+
+          {/* Column 1: Brand and tagline */}
+          <div className="space-y-3">
+            <p className="text-base font-semibold tracking-tight text-emerald-700 dark:text-emerald-300">Billigkurven</p>
+            <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              Smart matpris-sammenligning for norske husholdninger. Beslutning pa 60 sekunder.
+            </p>
+          </div>
+
+          {/* Column 2: Core navigation */}
+          <nav aria-label="Navigasjon">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Kom i gang</p>
+            <ul className="space-y-2">
+              {[
+                { href: "/", label: "Hjem" },
+                { href: "/onboarding", label: "Onboarding" },
+                { href: "/shopping-list", label: "Handleliste" },
+                { href: "/compare", label: "Sammenlign" },
+                { href: "/savings", label: "Sparing" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* Column 3: Data and tools */}
+          <nav aria-label="Data og verktoy">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">Data og verktoy</p>
+            <ul className="space-y-2">
+              {[
+                { href: "/receipts", label: "Kvitteringer" },
+                { href: "/savings/proof", label: "Sparebevis" },
+                { href: "/confidence", label: "Data og metodikk" },
+                { href: "/benchmark", label: "Benchmark" },
+                { href: "/admin", label: "Admin" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-slate-500 transition hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
 
-        <nav className="flex flex-wrap gap-2 text-sm text-slate-500 dark:text-slate-400">
-          {footerLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="rounded-lg px-2.5 py-1.5 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-900 dark:hover:text-slate-200">
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        {/* Bottom bar: consistent muted text at smaller size */}
+        <div className="mt-10 border-t border-slate-200 pt-6 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-600">
+          © {new Date().getFullYear()} Billigkurven · MVP
+        </div>
       </div>
     </footer>
   );
