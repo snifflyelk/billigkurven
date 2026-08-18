@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { filterLogicalPriceEntries, filterOutlierValues } from "@/lib/pricing-sanity";
 import { confidenceLabel, formatNok } from "@/lib/utils";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function ProductPage({ params }: { params: { id: string } }) {
   const product = await prisma.product.findUnique({
@@ -55,15 +55,16 @@ export default async function ProductPage({ params }: { params: { id: string } }
   );
   const validHistoricalPrices = historicalSanity.validEntries;
 
-  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const historyDays = 45;
   const now = Date.now();
   const historyBuckets = new Map<number, number[]>();
   const storeHistoryBuckets = new Map<string, Map<number, number[]>>();
   const storeLabels = new Map<string, string>();
   for (const price of validHistoricalPrices) {
-    const ageWeeks = Math.floor((now - price.date.getTime()) / weekMs);
-    if (ageWeeks < 0 || ageWeeks > 9) continue;
-    const bucketIndex = 9 - ageWeeks;
+    const ageDays = Math.floor((now - price.date.getTime()) / dayMs);
+    if (ageDays < 0 || ageDays > historyDays - 1) continue;
+    const bucketIndex = historyDays - 1 - ageDays;
     const values = historyBuckets.get(bucketIndex) ?? [];
     values.push(Number(price.price));
     historyBuckets.set(bucketIndex, values);
@@ -76,8 +77,8 @@ export default async function ProductPage({ params }: { params: { id: string } }
     storeLabels.set(price.storeId, price.store.name);
   }
 
-  const rawHistory = Array.from({ length: 10 }).map((_, i) => {
-    const bucketDate = new Date(now - (9 - i) * weekMs).toISOString();
+  const rawHistory = Array.from({ length: historyDays }).map((_, i) => {
+    const bucketDate = new Date(now - (historyDays - 1 - i) * dayMs).toISOString();
     const values = historyBuckets.get(i) ?? [];
     const filteredValues = filterOutlierValues(values).values;
     const averagePrice =
@@ -91,10 +92,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
   });
 
   const latestKnownPrice = Number(logicalLatestByStore.values().next().value?.price ?? product.prices[0]?.price ?? 0);
-  const history = rawHistory.map((point) => ({
-    date: point.date,
-    averagePrice: point.averagePrice ?? latestKnownPrice,
-  }));
+  const history = rawHistory;
 
   const storeSeries = Array.from(storeHistoryBuckets.entries())
     .map(([storeId]) => ({
@@ -103,8 +101,8 @@ export default async function ProductPage({ params }: { params: { id: string } }
     }))
     .sort((left, right) => left.label.localeCompare(right.label, "nb"));
 
-  const storeHistory = Array.from({ length: 10 }).map((_, i) => {
-    const bucketDate = new Date(now - (9 - i) * weekMs).toISOString();
+  const storeHistory = Array.from({ length: historyDays }).map((_, i) => {
+    const bucketDate = new Date(now - (historyDays - 1 - i) * dayMs).toISOString();
     const storeValues = Object.fromEntries(
       storeSeries.map((series) => {
         const values = storeHistoryBuckets.get(series.key)?.get(i) ?? [];
@@ -141,11 +139,12 @@ export default async function ProductPage({ params }: { params: { id: string } }
     ),
   );
 
-  const last = history[history.length - 1]?.averagePrice ?? latestKnownPrice;
-  const prev = history[history.length - 2]?.averagePrice ?? last;
+  const latestObservedPoints = history.filter((entry) => typeof entry.averagePrice === "number").slice(-2);
+  const last = latestObservedPoints[latestObservedPoints.length - 1]?.averagePrice ?? latestKnownPrice;
+  const prev = latestObservedPoints[latestObservedPoints.length - 2]?.averagePrice ?? last;
   const trendPct = prev > 0 ? Number((((last - prev) / prev) * 100).toFixed(1)) : 0;
-  const timingSignal = trendPct <= -3 ? "Kjop na" : trendPct >= 3 ? "Vent" : "Noytral";
-  const timingTone = timingSignal === "Kjop na" ? "text-emerald-700 dark:text-emerald-300" : timingSignal === "Vent" ? "text-amber-700 dark:text-amber-300" : "text-slate-700 dark:text-slate-300";
+  const timingSignal = trendPct <= -3 ? "Kjøp nå" : trendPct >= 3 ? "Vent" : "Nøytral";
+  const timingTone = timingSignal === "Kjøp nå" ? "text-emerald-700 dark:text-emerald-300" : timingSignal === "Vent" ? "text-amber-700 dark:text-amber-300" : "text-slate-700 dark:text-slate-300";
   const sourceDiversity = new Set(validHistoricalPrices.map((price) => price.source || "unknown")).size;
 
   return (
@@ -161,7 +160,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
 
         <section className="mt-5 grid gap-4 md:grid-cols-4 fade-rise-delayed">
           <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Siste pris</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">Siste observerte pris</p>
             <p className="mt-1 text-xl font-semibold">{formatNok(latestKnownPrice)}</p>
           </article>
           <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
@@ -233,7 +232,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
             )}
             {filteredStoreOutliers > 0 ? (
               <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                {filteredStoreOutliers} butikkpris(er) er skjult fordi de avviker kraftig fra normalnivaet for produktet.
+                {filteredStoreOutliers} butikkpris(er) er skjult fordi de avviker kraftig fra normalnivået for produktet.
               </p>
             ) : null}
             <p className="mt-3 text-xs text-slate-500">Pris per enhet: {formatNok(Number(product.prices[0]?.unitPrice ?? 0))}</p>
@@ -249,13 +248,13 @@ export default async function ProductPage({ params }: { params: { id: string } }
               Butikker: {uniqueStores} · Nyeste observasjon: {latestAgeHours !== null ? `${latestAgeHours} timer siden` : "-"}
             </p>
             <p className={`mt-1 text-xs font-medium ${timingTone}`}>
-              Best buy window: {timingSignal === "Kjop na" ? "Prisene peker ned. Vinduet er gunstig akkurat na." : timingSignal === "Vent" ? "Prisene peker opp. Vent hvis du kan." : "Ingen tydelig signalretning na."}
+              Best buy window: {timingSignal === "Kjøp nå" ? "Prisene peker ned. Vinduet er gunstig akkurat nå." : timingSignal === "Vent" ? "Prisene peker opp. Vent hvis du kan." : "Ingen tydelig signalretning nå."}
             </p>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               Vi viser confidence eksplisitt slik at du ser om datagrunnlaget er sterkt eller svakt.
             </p>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Se full metodikk pa <Link href="/confidence" className="font-medium text-emerald-700 hover:underline dark:text-emerald-300">prisgrunnlag og metodikk</Link>.
+              Se full metodikk på <Link href="/confidence" className="font-medium text-emerald-700 hover:underline dark:text-emerald-300">prisgrunnlag og metodikk</Link>.
             </p>
           </div>
         </section>
@@ -267,7 +266,7 @@ export default async function ProductPage({ params }: { params: { id: string } }
             Sett varsel
           </Link>
           <Link href="/compare" className="mobile-bottom-action min-w-0 rounded-xl bg-emerald-600 px-2.5 py-2 text-center text-[13px] font-medium leading-tight text-white sm:px-3 sm:text-sm">
-            Sammenlign na
+            Sammenlign nå
           </Link>
         </div>
       </div>

@@ -20,6 +20,8 @@ type AlertRow = {
   timing?: {
     recommendation: "kjop-na" | "vent" | "noytral" | "ukjent";
     changePct: number | null;
+    dropFromLast7Pct?: number | null;
+    confidencePct?: number | null;
   };
   urgency?: {
     level: "hoy" | "medium" | "lav";
@@ -124,18 +126,18 @@ export function PriceAlertsPanel({
 
   function proximityBadge(alert: AlertRow) {
     const latest = Number(alert.product.prices?.[0]?.price ?? NaN);
-    if (!Number.isFinite(latest) || alert.targetPrice === null) return "Uten malsum";
+    if (!Number.isFinite(latest) || alert.targetPrice === null) return "Uten målsum";
     const diff = latest - alert.targetPrice;
-    if (diff <= 0) return "Maal oppnadd";
+    if (diff <= 0) return "Mål oppnådd";
     if (diff <= 3) return "Nesten der";
-    return "Ikke nar ennå";
+    return "Ikke nær ennå";
   }
 
   return (
     <section className="grid gap-6 lg:grid-cols-[1fr_1.25fr]">
       <article id="new-alert-card" className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-semibold">Nytt prisvarsel</h2>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Kombiner malsum og trendsignal for bedre timing.</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Kombiner målsum, prisfall-prosent og trendsignal for bedre timing.</p>
         <form className="mt-4 space-y-3" onSubmit={createAlert}>
           <label className="block text-sm text-slate-600 dark:text-slate-300">
             Produkt
@@ -153,7 +155,7 @@ export function PriceAlertsPanel({
           </label>
 
           <label className="block text-sm text-slate-600 dark:text-slate-300">
-            Malsum (kr, valgfri)
+            Målsum (kr, valgfri)
             <input
               className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950"
               value={targetPrice}
@@ -180,7 +182,7 @@ export function PriceAlertsPanel({
               checked={notifyOnBuyNow}
               onChange={(event) => setNotifyOnBuyNow(event.target.checked)}
             />
-            Varsle ved &quot;kjop na&quot;-signal
+            Varsle ved &quot;kjøp nå&quot;-signal
           </label>
 
           {error ? <p className="text-sm text-rose-600">{error}</p> : null}
@@ -197,7 +199,7 @@ export function PriceAlertsPanel({
 
       <article id="alert-list" className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-semibold">Aktive og historiske varsler</h2>
-        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Prioriter varer med &quot;Maal oppnadd&quot; eller &quot;Nesten der&quot;.</p>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Prioriter varer med &quot;Mål oppnådd&quot; eller &quot;Nesten der&quot;.</p>
         {alerts.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Ingen varsler ennå.</p>
         ) : (
@@ -216,13 +218,13 @@ export function PriceAlertsPanel({
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {alert.product.brand} · Siste pris: {latestPrice ?? "-"} {latestStore ? `(${latestStore})` : ""}
+                    {alert.product.brand} · Siste observerte pris: {latestPrice ?? "-"} {latestStore ? `(${latestStore})` : ""}
                   </p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Maalpris: {alert.targetPrice ?? "-"} · Drop%: {alert.targetDropPct ?? "-"} · Buy-now: {alert.notifyOnBuyNow ? "Ja" : "Nei"}
+                    Målpris: {alert.targetPrice ?? "-"} · Drop%: {alert.targetDropPct ?? "-"} · Buy-now: {alert.notifyOnBuyNow ? "Ja" : "Nei"}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${badge === "Maal oppnadd" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/45 dark:text-emerald-200" : badge === "Nesten der" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/45 dark:text-amber-200" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}>
+                    <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${badge === "Mål oppnådd" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/45 dark:text-emerald-200" : badge === "Nesten der" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/45 dark:text-amber-200" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}>
                       {badge}
                     </span>
                     {alert.urgency ? (
@@ -233,11 +235,21 @@ export function PriceAlertsPanel({
                     {alert.timing ? (
                       <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${alert.timing.recommendation === "kjop-na" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/45 dark:text-emerald-200" : alert.timing.recommendation === "vent" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/45 dark:text-amber-200" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}>
                         {alert.timing.recommendation === "kjop-na"
-                          ? "Timing: Kjop na"
+                          ? "Timing: Kjøp nå"
                           : alert.timing.recommendation === "vent"
                             ? "Timing: Vent"
-                            : "Timing: Noytral"}
+                            : "Timing: Nøytral"}
                         {alert.timing.changePct !== null ? ` (${alert.timing.changePct > 0 ? "+" : ""}${alert.timing.changePct}%)` : ""}
+                      </span>
+                    ) : null}
+                    {alert.timing?.dropFromLast7Pct !== null && alert.timing?.dropFromLast7Pct !== undefined ? (
+                      <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${alert.timing.dropFromLast7Pct >= (alert.targetDropPct ?? 10) ? "bg-rose-100 text-rose-800 dark:bg-rose-900/45 dark:text-rose-200" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"}`}>
+                        Prisfall 7d: {alert.timing.dropFromLast7Pct}%
+                      </span>
+                    ) : null}
+                    {alert.timing?.confidencePct !== null && alert.timing?.confidencePct !== undefined ? (
+                      <span className="rounded-full bg-cyan-100 px-2 py-1 text-[11px] font-semibold text-cyan-800 dark:bg-cyan-900/45 dark:text-cyan-200">
+                        Timing confidence: {alert.timing.confidencePct}%
                       </span>
                     ) : null}
                   </div>
@@ -246,7 +258,7 @@ export function PriceAlertsPanel({
                       className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
                       onClick={() => toggleAlert(alert.id, alert.isActive)}
                     >
-                      {alert.isActive ? "Sett pa pause" : "Aktiver"}
+                      {alert.isActive ? "Sett på pause" : "Aktiver"}
                     </button>
                     <button
                       className="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950/30"

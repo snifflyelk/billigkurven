@@ -74,7 +74,7 @@ export function BudgetPlanner({
       });
       showToast({
         title: "Budsjett lagret",
-        description: "Billigkurven husker na budsjettet ditt for senere handlelister.",
+        description: "Billigkurven husker nå budsjettet ditt for senere handlelister.",
         type: "success",
       });
     } catch (error) {
@@ -101,7 +101,7 @@ export function BudgetPlanner({
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900 dark:bg-emerald-950/25">
           <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Verifisert historisk sparing</p>
           <p className="mt-1 text-2xl font-semibold text-emerald-900 dark:text-emerald-100">{formatNok(verifiedHistoricalSavings)}</p>
-          <p className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">Basert pa {reviewedReceipts} godkjente kvitteringer.</p>
+          <p className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">Basert på {reviewedReceipts} godkjente kvitteringer.</p>
         </div>
       </div>
 
@@ -152,8 +152,8 @@ export function BudgetPlanner({
               : `Anbefalt plan ligger ${formatNok(Math.abs(gapToBudget))} over budsjettet ditt.`}
             <p className="mt-1 text-xs opacity-80">
               {gapWithSubstitutions >= 0
-                ? `Med foreslaatte bytter kan du ligge omtrent ${formatNok(gapWithSubstitutions)} under budsjettet.`
-                : `Selv med foreslaatte bytter mangler du omtrent ${formatNok(Math.abs(gapWithSubstitutions))}.`}
+                ? `Med foreslåtte bytter kan du ligge omtrent ${formatNok(gapWithSubstitutions)} under budsjettet.`
+                : `Selv med foreslåtte bytter mangler du omtrent ${formatNok(Math.abs(gapWithSubstitutions))}.`}
             </p>
           </div>
 
@@ -176,7 +176,7 @@ export function BudgetPlanner({
           <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs uppercase tracking-wide text-slate-500">Estimert ukesforbruk</p>
             <p className="mt-1 text-2xl font-semibold">{formatNok(weeklyProjectedSpend)}</p>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Basert pa billigste observerte handleplan akkurat na.</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Basert på billigste observerte handleplan akkurat nå.</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
             <p className="text-xs uppercase tracking-wide text-slate-500">Ukentlig budsjettstatus</p>

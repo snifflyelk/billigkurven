@@ -1,20 +1,30 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_USER_EMAIL } from "@/lib/constants";
-import { badRequest, notFound, serverError } from "@/lib/api-response";
+import { apiError, badRequest, notFound, serverError } from "@/lib/api-response";
 import { buildAlertUrgency, buildTimingSignal } from "@/lib/alerts/signal";
+import { getAuthenticatedSessionUserId } from "@/lib/user-session";
 
-async function getDefaultUser() {
-  const existing = await prisma.user.findUnique({ where: { email: DEFAULT_USER_EMAIL } });
-  if (existing) return existing;
-  return prisma.user.create({ data: { email: DEFAULT_USER_EMAIL } });
+async function requireAlertUserId() {
+  const userId = await getAuthenticatedSessionUserId();
+  if (!userId) {
+    return null;
+  }
+  return userId;
 }
 
 export async function GET() {
   try {
-    const user = await getDefaultUser();
+    const userId = await requireAlertUserId();
+    if (!userId) {
+      return apiError(401, {
+        error: "Innlogging kreves.",
+        hint: "Logg inn for a hente personlige varsler.",
+        code: "UNAUTHORIZED",
+      });
+    }
+
     const alerts = await prisma.priceAlert.findMany({
-      where: { userId: user.id },
+      where: { userId },
       orderBy: [{ isActive: "desc" }, { updatedAt: "desc" }],
       include: {
         product: {
@@ -41,6 +51,8 @@ export async function GET() {
       const urgency = buildAlertUrgency({
         latestPrice,
         targetPrice: alert.targetPrice !== null ? Number(alert.targetPrice) : null,
+        targetDropPct: alert.targetDropPct,
+        dropFromLast7Pct: timing.dropFromLast7Pct,
         recommendation: timing.recommendation,
       });
 
@@ -54,12 +66,21 @@ export async function GET() {
 
     return NextResponse.json({ alerts: enriched });
   } catch (error) {
-    return serverError(error, "Kunne ikke hente varsler akkurat na.");
+    return serverError(error, "Kunne ikke hente varsler akkurat nå.");
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const userId = await requireAlertUserId();
+    if (!userId) {
+      return apiError(401, {
+        error: "Innlogging kreves.",
+        hint: "Logg inn for a opprette personlige varsler.",
+        code: "UNAUTHORIZED",
+      });
+    }
+
     const body = await request.json();
     const productId = typeof body.productId === "string" ? body.productId.trim() : "";
 
@@ -71,8 +92,6 @@ export async function POST(request: Request) {
     if (!product) {
       return notFound("Produkt ikke funnet.", "Kontroller productId.");
     }
-
-    const user = await getDefaultUser();
 
     const parsedTargetPrice =
       body.targetPrice === null || body.targetPrice === undefined || body.targetPrice === ""
@@ -96,7 +115,7 @@ export async function POST(request: Request) {
     const alert = await prisma.priceAlert.upsert({
       where: {
         userId_productId: {
-          userId: user.id,
+          userId,
           productId,
         },
       },
@@ -107,7 +126,7 @@ export async function POST(request: Request) {
         isActive: true,
       },
       create: {
-        userId: user.id,
+        userId,
         productId,
         targetPrice: parsedTargetPrice,
         targetDropPct: parsedDropPct,

@@ -4,13 +4,29 @@ const prisma = new PrismaClient();
 
 const categories = ["Meieri", "Frukt", "Grønt", "Pålegg", "Drikke", "Frossen"];
 
+const sampleProducts = [
+  { name: "Tine Lettmelk 1L", brand: "Tine", category: "Meieri" },
+  { name: "Q Helmelk 1L", brand: "Q-Meieriene", category: "Meieri" },
+  { name: "Prior Egg 12pk", brand: "Prior", category: "Pålegg" },
+  { name: "Bama Banan", brand: "Bama", category: "Frukt" },
+  { name: "Gulrot 1kg", brand: "Bama", category: "Grønt" },
+  { name: "Gilde Kyllingfilet 700g", brand: "Gilde", category: "Frossen" },
+  { name: "Coca-Cola Zero 1,5L", brand: "Coca-Cola", category: "Drikke" },
+  { name: "Pepsi Max 1,5L", brand: "Pepsi", category: "Drikke" },
+  { name: "Mills Kaviar", brand: "Mills", category: "Pålegg" },
+  { name: "Jarlsberg Original", brand: "Tine", category: "Meieri" },
+  { name: "Grandiosa Original", brand: "Stabburet", category: "Frossen" },
+  { name: "Toro Tomatsuppe", brand: "Toro", category: "Pålegg" },
+];
+
 const products = Array.from({ length: 30 }).map((_, i) => {
   const idx = i + 1;
+  const sample = sampleProducts[i % sampleProducts.length];
   return {
-    name: `Vare ${idx}`,
-    brand: idx % 2 === 0 ? "Norsk Merke" : "Hverdagsvalg",
+    name: `${sample.name} ${idx}`,
+    brand: sample.brand,
     ean: `5700000000${String(idx).padStart(3, "0")}`,
-    category: categories[i % categories.length],
+    category: sample.category ?? categories[i % categories.length],
     imageUrl: `https://picsum.photos/seed/billigkurven-${idx}/320/220`,
   };
 });

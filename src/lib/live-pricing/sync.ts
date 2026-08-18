@@ -1,4 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
+import { createHash } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
 import { derivePackageMetadata } from "@/lib/package-metadata";
@@ -11,14 +12,22 @@ import { sparProvider } from "./providers/spar";
 import { jokerProvider } from "./providers/joker";
 import { foodoraProvider } from "./providers/foodora";
 import { woltProvider } from "./providers/wolt";
-import { isLikelyProductImageUrl, shouldReplaceExistingImage } from "./providers/media";
+import { isLikelyImageForProduct, isLikelyProductImageUrl, shouldReplaceExistingImage } from "./providers/media";
 import type { LivePriceCandidate, LivePriceProvider } from "./providers/types";
 
 const providers: LivePriceProvider[] = [odaProvider, menyProvider, sparProvider, jokerProvider, foodoraProvider, woltProvider];
 const norgesgruppenProviders = new Set(["meny", "spar", "joker"]);
 
-const MAX_PRODUCTS = Number(process.env.LIVE_PRICING_MAX_PRODUCTS ?? 80);
+const MAX_PRODUCTS_RAW = process.env.LIVE_PRICING_MAX_PRODUCTS;
+const MAX_PRODUCTS = MAX_PRODUCTS_RAW ? Number(MAX_PRODUCTS_RAW) : null;
 const SKIP_DUPLICATE_WITHIN_HOURS = Number(process.env.LIVE_PRICING_MIN_INTERVAL_HOURS ?? 6);
+const ENABLE_CATALOG_DISCOVERY = (process.env.LIVE_PRICING_ENABLE_CATALOG_DISCOVERY ?? "true").toLowerCase() !== "false";
+const MAX_DISCOVERY_CANDIDATES_PER_PROVIDER = Math.max(
+  Number(process.env.LIVE_PRICING_DISCOVERY_MAX_CANDIDATES_PER_PROVIDER ?? 8000),
+  100,
+);
+const DB_RETRY_ATTEMPTS = Math.max(Number(process.env.LIVE_PRICING_DB_RETRY_ATTEMPTS ?? 5), 1);
+const DB_RETRY_BASE_MS = Math.max(Number(process.env.LIVE_PRICING_DB_RETRY_BASE_MS ?? 300), 50);
 
 type SyncItem = {
   productId: string;
@@ -35,6 +44,7 @@ type SyncProduct = {
   id: string;
   name: string;
   brand: string;
+  ean: string;
   category: string;
   imageUrl: string | null;
   packageQuantity: number | null;
@@ -52,6 +62,9 @@ type ProviderRuntimeState = {
   attemptedProducts: number;
   matchedProducts: number;
   matchedPrices: number;
+  discoveredCandidates: number;
+  discoveredProducts: number;
+  discoveredPrices: number;
   skippedDuplicates: number;
   consecutiveMisses: number;
   disabled: boolean;
@@ -72,6 +85,54 @@ type NormalizedPackHint = {
 };
 
 type PackageCompatibility = "match" | "mismatch" | "unknown";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetriableDbError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ["P1001", "P1002", "P1008", "P1017"].includes(error.code);
+  }
+
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return true;
+  }
+
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    message.includes("server has closed the connection") ||
+    message.includes("connection reset") ||
+    message.includes("connection terminated") ||
+    message.includes("econnreset")
+  );
+}
+
+async function withDbRetry<T>(client: PrismaClient, action: string, run: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= DB_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      lastError = error;
+
+      if (!isRetriableDbError(error) || attempt >= DB_RETRY_ATTEMPTS) {
+        throw error;
+      }
+
+      const backoffMs = DB_RETRY_BASE_MS * 2 ** (attempt - 1);
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[live-pricing] transient DB error during ${action}; retry ${attempt}/${DB_RETRY_ATTEMPTS}: ${message}`);
+
+      await client.$disconnect().catch(() => undefined);
+      await sleep(backoffMs);
+      await client.$connect().catch(() => undefined);
+    }
+  }
+
+  throw (lastError instanceof Error ? lastError : new Error(`Database operation failed: ${action}`));
+}
 
 function normalizeTokenText(value: string) {
   return value
@@ -142,6 +203,10 @@ function tokenOverlapRatio(left: string, right: string) {
   }
 
   return overlap / leftTokens.size;
+}
+
+function hasProductNameAnchor(productName: string, candidateText: string) {
+  return tokenOverlapRatio(productName, candidateText) > 0;
 }
 
 const categoryKeywords: Record<string, string[]> = {
@@ -227,9 +292,15 @@ function isSyncableProduct(product: SyncProduct) {
   return !genericName && !genericBrand;
 }
 
-function shouldReplaceProductImage(existingImageUrl: string | null, candidateImageUrl: string | null | undefined) {
+function shouldReplaceProductImage(
+  product: Pick<SyncProduct, "name" | "brand" | "imageUrl"> & { ean?: string | null },
+  candidateImageUrl: string | null | undefined,
+) {
   if (!isLikelyProductImageUrl(candidateImageUrl)) return false;
-  return shouldReplaceExistingImage(existingImageUrl);
+  if (!isLikelyImageForProduct(candidateImageUrl, { name: product.name, brand: product.brand, ean: product.ean ?? null })) {
+    return false;
+  }
+  return shouldReplaceExistingImage(product.imageUrl);
 }
 
 function pickBestCandidate(product: SyncProduct, query: string, candidates: LivePriceCandidate[]) {
@@ -259,6 +330,10 @@ function pickBestCandidate(product: SyncProduct, query: string, candidates: Live
     }
 
     if (packageCompatibility === "mismatch") {
+      continue;
+    }
+
+    if (!hasProductNameAnchor(product.name, candidateText)) {
       continue;
     }
 
@@ -296,52 +371,66 @@ function pickBestCandidate(product: SyncProduct, query: string, candidates: Live
 }
 
 async function ensureStore(client: PrismaClient, provider: LivePriceProvider) {
-  const existingStore = await client.store.findFirst({
-    where: { name: provider.storeName },
-  });
+  const existingStore = await withDbRetry(client, "store.findFirst", () =>
+    client.store.findFirst({
+      where: { name: provider.storeName },
+    }),
+  );
 
   if (existingStore) {
-    return client.store.update({
-      where: { id: existingStore.id },
-      data: {
-        chain: provider.chain,
-        location: provider.location,
-      },
-    });
+    return withDbRetry(client, "store.update", () =>
+      client.store.update({
+        where: { id: existingStore.id },
+        data: {
+          chain: provider.chain,
+          location: provider.location,
+          postalCode: provider.postalCode ?? existingStore.postalCode,
+          latitude: provider.latitude ?? existingStore.latitude,
+          longitude: provider.longitude ?? existingStore.longitude,
+        },
+      }),
+    );
   }
 
-  return client.store.create({
-    data: {
-      name: provider.storeName,
-      chain: provider.chain,
-      location: provider.location,
-    },
-  });
+  return withDbRetry(client, "store.create", () =>
+    client.store.create({
+      data: {
+        name: provider.storeName,
+        chain: provider.chain,
+        location: provider.location,
+        postalCode: provider.postalCode,
+        latitude: provider.latitude,
+        longitude: provider.longitude,
+      },
+    }),
+  );
 }
 
 async function ensureLiveProduct(client: PrismaClient, item: (typeof liveCatalog)[number]) {
   const derivedPackage = derivePackageMetadata(item.name);
 
-  return client.product.upsert({
-    where: { ean: item.ean },
-    update: {
-      name: item.name,
-      brand: item.brand,
-      category: item.category,
-      imageUrl: item.imageUrl,
-      packageQuantity: item.packageQuantity ?? derivedPackage.packageQuantity,
-      packageUnit: item.packageUnit ?? derivedPackage.packageUnit,
-    },
-    create: {
-      ean: item.ean,
-      name: item.name,
-      brand: item.brand,
-      category: item.category,
-      imageUrl: item.imageUrl,
-      packageQuantity: item.packageQuantity ?? derivedPackage.packageQuantity,
-      packageUnit: item.packageUnit ?? derivedPackage.packageUnit,
-    },
-  });
+  return withDbRetry(client, "product.upsert.liveCatalog", () =>
+    client.product.upsert({
+      where: { ean: item.ean },
+      update: {
+        name: item.name,
+        brand: item.brand,
+        category: item.category,
+        imageUrl: item.imageUrl,
+        packageQuantity: item.packageQuantity ?? derivedPackage.packageQuantity,
+        packageUnit: item.packageUnit ?? derivedPackage.packageUnit,
+      },
+      create: {
+        ean: item.ean,
+        name: item.name,
+        brand: item.brand,
+        category: item.category,
+        imageUrl: item.imageUrl,
+        packageQuantity: item.packageQuantity ?? derivedPackage.packageQuantity,
+        packageUnit: item.packageUnit ?? derivedPackage.packageUnit,
+      },
+    }),
+  );
 }
 
 function buildProductQueries(product: SyncProduct) {
@@ -380,19 +469,126 @@ function buildProductQueries(product: SyncProduct) {
   return queries;
 }
 
+function buildCatalogDiscoveryQueries() {
+  const fromEnv = (process.env.LIVE_PRICING_DISCOVERY_QUERIES ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (fromEnv.length > 0) {
+    return Array.from(new Set(fromEnv));
+  }
+
+  const alphabet = [
+    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
+    "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "æ", "ø", "å",
+  ];
+  const anchors = [
+    "melk", "brod", "ost", "yoghurt", "smor", "egg", "pasta", "ris", "saus", "kylling", "fisk",
+    "storfe", "frukt", "gronnsak", "potet", "tomat", "agurk", "banan", "eple", "juice", "kaffe",
+    "te", "toalettpapir", "vaskemiddel", "sjampo", "bleie", "godteri", "snacks", "frossen",
+  ];
+
+  return [...alphabet, ...anchors];
+}
+
+function normalizeDiscoveryValue(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildDiscoveredEan(provider: string, candidate: LivePriceCandidate) {
+  const fingerprint = `${provider}|${candidate.url}|${normalizeDiscoveryValue(candidate.title)}|${normalizeDiscoveryValue(candidate.details)}`;
+  const hash = createHash("sha1").update(fingerprint).digest("hex").slice(0, 24);
+  return `live-${provider}-${hash}`;
+}
+
+function inferBrandFromCandidate(candidate: LivePriceCandidate) {
+  const details = normalizeDiscoveryValue(candidate.details);
+  if (!details) return "Ukjent merke";
+  const first = details.split(" ").filter(Boolean).slice(0, 2).join(" ").trim();
+  if (!first) return "Ukjent merke";
+  return first.replace(/\b\w/g, (token) => token.toUpperCase());
+}
+
+function inferCategoryFromCandidate(candidate: LivePriceCandidate) {
+  const group = inferCategoryGroup(`${candidate.title} ${candidate.details}`);
+  if (!group) return "Dagligvarer";
+
+  if (group === "meieri") return "Meieri";
+  if (group === "bakeri") return "Bakeri";
+  if (group === "gront") return "Frukt og gront";
+  if (group === "kjott") return "Kjott og fisk";
+  if (group === "middag") return "Middag";
+  return "Dagligvarer";
+}
+
+async function ensureDiscoveredProduct(client: PrismaClient, provider: string, candidate: LivePriceCandidate): Promise<SyncProduct> {
+  const ean = buildDiscoveredEan(provider, candidate);
+  const derivedPackage = derivePackageMetadata(candidate.title, candidate.title, candidate.details);
+  const brand = inferBrandFromCandidate(candidate);
+  const category = inferCategoryFromCandidate(candidate);
+  const imageUrl = isLikelyProductImageUrl(candidate.imageUrl) ? candidate.imageUrl ?? null : null;
+
+  const product = await withDbRetry(client, "product.upsert.discovery", () =>
+    client.product.upsert({
+      where: { ean },
+      update: {
+        name: candidate.title,
+        brand,
+        category,
+        ...(imageUrl ? { imageUrl } : {}),
+        packageQuantity: derivedPackage.packageQuantity,
+        packageUnit: derivedPackage.packageUnit,
+      },
+      create: {
+        ean,
+        name: candidate.title,
+        brand,
+        category,
+        imageUrl,
+        packageQuantity: derivedPackage.packageQuantity,
+        packageUnit: derivedPackage.packageUnit,
+      },
+      select: {
+        id: true,
+        name: true,
+        brand: true,
+        ean: true,
+        category: true,
+        imageUrl: true,
+        packageQuantity: true,
+        packageUnit: true,
+      },
+    }),
+  );
+
+  return product;
+}
+
 async function listProductsToSync(client: PrismaClient, options?: SyncLivePriceOptions): Promise<SyncProduct[]> {
   const seeded = await Promise.all(liveCatalog.map((item) => ensureLiveProduct(client, item)));
   const productIdSet = options?.productIds?.length ? new Set(options.productIds) : null;
-  const take = Math.max(options?.maxProducts ?? MAX_PRODUCTS, 1);
+  const requestedTake = Number.isFinite(options?.maxProducts)
+    ? Math.max(options?.maxProducts ?? 1, 1)
+    : Number.isFinite(MAX_PRODUCTS)
+      ? Math.max(MAX_PRODUCTS ?? 1, 1)
+      : null;
 
   const fromDb = await client.product.findMany({
     ...(productIdSet ? { where: { id: { in: Array.from(productIdSet) } } } : {}),
     orderBy: { updatedAt: "desc" },
-    take,
+    ...(requestedTake ? { take: requestedTake } : {}),
     select: {
       id: true,
       name: true,
       brand: true,
+      ean: true,
       category: true,
       imageUrl: true,
       packageQuantity: true,
@@ -406,6 +602,7 @@ async function listProductsToSync(client: PrismaClient, options?: SyncLivePriceO
       id: product.id,
       name: product.name,
       brand: product.brand,
+      ean: product.ean,
       category: product.category,
       imageUrl: product.imageUrl,
       packageQuantity: product.packageQuantity,
@@ -416,7 +613,7 @@ async function listProductsToSync(client: PrismaClient, options?: SyncLivePriceO
   return Array.from(merged.values())
     .filter((product) => (productIdSet ? productIdSet.has(product.id) : true))
     .filter(isSyncableProduct)
-    .slice(0, take);
+    .slice(0, requestedTake ?? undefined);
 }
 
 async function shouldCreatePriceRow(
@@ -430,19 +627,30 @@ async function shouldCreatePriceRow(
     now: Date;
   },
 ) {
-  const latest = await client.price.findFirst({
-    where: {
-      productId: input.productId,
-      storeId: input.storeId,
-      source: input.source,
-    },
-    orderBy: { date: "desc" },
-  });
+  const latest = await withDbRetry(client, "price.findFirst.latest", () =>
+    client.price.findFirst({
+      where: {
+        productId: input.productId,
+        storeId: input.storeId,
+        source: input.source,
+      },
+      orderBy: { date: "desc" },
+    }),
+  );
 
   if (!latest) return true;
 
   const samePrice = Number(latest.price) === input.price && Number(latest.unitPrice) === input.unitPrice;
+  const sameUtcDay =
+    latest.date.getUTCFullYear() === input.now.getUTCFullYear() &&
+    latest.date.getUTCMonth() === input.now.getUTCMonth() &&
+    latest.date.getUTCDate() === input.now.getUTCDate();
+
+  // If the price changed, always keep a new row even on the same day.
   if (!samePrice) return true;
+
+  // Identical price snapshots should exist once per day to build readable history.
+  if (!sameUtcDay) return true;
 
   const diffMs = input.now.getTime() - latest.date.getTime();
   const minIntervalMs = SKIP_DUPLICATE_WITHIN_HOURS * 60 * 60 * 1000;
@@ -484,6 +692,9 @@ async function buildProviderRuntimeState(client: PrismaClient, selectedProviders
         attemptedProducts: 0,
         matchedProducts: 0,
         matchedPrices: 0,
+        discoveredCandidates: 0,
+        discoveredProducts: 0,
+        discoveredPrices: 0,
         skippedDuplicates: 0,
         consecutiveMisses: degradedFromHistory ? 2 : 0,
         disabled: false,
@@ -504,6 +715,7 @@ export async function syncLivePrices(client: PrismaClient = prisma, options?: Sy
   const createdAt = new Date();
   const results: SyncItem[] = [];
   let skippedDuplicates = 0;
+  const discoveredProductIds = new Set<string>();
 
   const allowedChainSet = options?.allowedChains?.length
     ? new Set(options.allowedChains.map((chain) => chain.trim().toLowerCase()).filter(Boolean))
@@ -513,10 +725,9 @@ export async function syncLivePrices(client: PrismaClient = prisma, options?: Sy
     allowedChainSet ? allowedChainSet.has(provider.chain.trim().toLowerCase()) : true,
   );
 
-  const products = await listProductsToSync(client, options);
-  if (selectedProviders.length === 0 || products.length === 0) {
+  if (selectedProviders.length === 0) {
     return {
-      productsEvaluated: products.length,
+      productsEvaluated: 0,
       providersEvaluated: selectedProviders.length,
       matchedPrices: 0,
       skippedDuplicates: 0,
@@ -528,6 +739,129 @@ export async function syncLivePrices(client: PrismaClient = prisma, options?: Sy
   const stores = await Promise.all(selectedProviders.map((provider) => ensureStore(client, provider)));
   const storeLookup = new Map(selectedProviders.map((provider, index) => [provider.provider, stores[index]]));
   const providerState = await buildProviderRuntimeState(client, selectedProviders);
+
+  const discoveryMode =
+    ENABLE_CATALOG_DISCOVERY &&
+    !options?.productIds?.length &&
+    !Number.isFinite(options?.maxProducts);
+
+  if (discoveryMode) {
+    const discoveryQueries = buildCatalogDiscoveryQueries();
+
+    for (const provider of selectedProviders) {
+      const runtime = providerState.get(provider.provider);
+      const store = storeLookup.get(provider.provider);
+      if (!runtime || !store) {
+        continue;
+      }
+
+      const deduped = new Map<string, LivePriceCandidate>();
+
+      for (const query of discoveryQueries) {
+        if (deduped.size >= MAX_DISCOVERY_CANDIDATES_PER_PROVIDER) {
+          break;
+        }
+
+        const candidates = await provider.search(query).catch(() => []);
+        for (const candidate of candidates) {
+          if (!candidate.url || !candidate.title || candidate.price <= 0 || candidate.unitPrice <= 0) {
+            continue;
+          }
+
+          const key = `${candidate.url}|${normalizeDiscoveryValue(candidate.title)}`;
+          if (!deduped.has(key)) {
+            deduped.set(key, candidate);
+          }
+        }
+      }
+
+      runtime.discoveredCandidates = deduped.size;
+      runtime.attemptedProducts += deduped.size;
+      const providerMatchedProductIds = new Set<string>();
+
+      for (const candidate of Array.from(deduped.values()).slice(0, MAX_DISCOVERY_CANDIDATES_PER_PROVIDER)) {
+        const product = await ensureDiscoveredProduct(client, provider.provider, candidate);
+        discoveredProductIds.add(product.id);
+        providerMatchedProductIds.add(product.id);
+
+        const createRow = await shouldCreatePriceRow(client, {
+          productId: product.id,
+          storeId: store.id,
+          source: provider.provider,
+          price: candidate.price,
+          unitPrice: candidate.unitPrice,
+          now: createdAt,
+        });
+
+        if (!createRow) {
+          skippedDuplicates += 1;
+          runtime.skippedDuplicates += 1;
+          continue;
+        }
+
+        await withDbRetry(client, "price.create.discovery", () =>
+          client.price.create({
+            data: {
+              productId: product.id,
+              storeId: store.id,
+              source: provider.provider,
+              sourceUrl: candidate.url,
+              price: new Prisma.Decimal(candidate.price),
+              unitPrice: new Prisma.Decimal(candidate.unitPrice),
+              date: createdAt,
+            },
+          }),
+        );
+
+        results.push({
+          productId: product.id,
+          productName: product.name,
+          provider: provider.provider,
+          storeName: store.name,
+          price: candidate.price,
+          unitPrice: candidate.unitPrice,
+          url: candidate.url,
+          imageUrl: candidate.imageUrl,
+        });
+
+        runtime.matchedPrices += 1;
+        runtime.discoveredPrices += 1;
+      }
+
+      runtime.matchedProducts += providerMatchedProductIds.size;
+      runtime.discoveredProducts += providerMatchedProductIds.size;
+    }
+  }
+
+  const runLegacyMatching = !discoveryMode || Boolean(options?.productIds?.length) || Number.isFinite(options?.maxProducts);
+  const products = runLegacyMatching ? await listProductsToSync(client, options) : [];
+  if (runLegacyMatching && products.length === 0) {
+    return {
+      productsEvaluated: 0,
+      providersEvaluated: selectedProviders.length,
+      matchedPrices: results.length,
+      skippedDuplicates,
+      providerMetrics: Array.from(providerState.values()).map((state) => ({
+        provider: state.provider.provider,
+        chain: state.provider.chain,
+        attemptedProducts: state.attemptedProducts,
+        matchedProducts: state.matchedProducts,
+        matchedPrices: state.matchedPrices,
+        discoveredCandidates: state.discoveredCandidates,
+        discoveredProducts: state.discoveredProducts,
+        discoveredPrices: state.discoveredPrices,
+        skippedDuplicates: state.skippedDuplicates,
+        hitRate: 0,
+        degradedFromHistory: state.degradedFromHistory,
+        disabled: state.disabled,
+        disabledReason: state.disabledReason,
+        recentRows7d: state.recentRows7d,
+        latestObservationHours: state.latestObservationHours,
+      })),
+      results,
+    };
+  }
+
   const ngColdStart = Array.from(providerState.values()).some(
     (state) => norgesgruppenProviders.has(state.provider.provider) && state.recentRows7d === 0,
   );
@@ -611,11 +945,13 @@ export async function syncLivePrices(client: PrismaClient = prisma, options?: Sy
       }
 
       const candidateImageUrl = bestMatch.candidate.imageUrl ?? null;
-      if (shouldReplaceProductImage(product.imageUrl, candidateImageUrl)) {
-        await client.product.update({
-          where: { id: product.id },
-          data: { imageUrl: candidateImageUrl },
-        });
+      if (shouldReplaceProductImage(product, candidateImageUrl)) {
+        await withDbRetry(client, "product.update.image", () =>
+          client.product.update({
+            where: { id: product.id },
+            data: { imageUrl: candidateImageUrl },
+          }),
+        );
         product.imageUrl = candidateImageUrl;
       }
 
@@ -645,26 +981,30 @@ export async function syncLivePrices(client: PrismaClient = prisma, options?: Sy
               Math.max(40, product.packageQuantity * 0.07)));
 
       if (shouldUpdatePackageMetadata && derivedPackage.packageQuantity && derivedPackage.packageUnit) {
-        await client.product.update({
-          where: { id: product.id },
-          data: {
-            packageQuantity: derivedPackage.packageQuantity,
-            packageUnit: derivedPackage.packageUnit,
-          },
-        });
+        await withDbRetry(client, "product.update.package", () =>
+          client.product.update({
+            where: { id: product.id },
+            data: {
+              packageQuantity: derivedPackage.packageQuantity,
+              packageUnit: derivedPackage.packageUnit,
+            },
+          }),
+        );
       }
 
-      await client.price.create({
-        data: {
-          productId: product.id,
-          storeId: store.id,
-          source: provider.provider,
-          sourceUrl: bestMatch.candidate.url,
-          price: new Prisma.Decimal(bestMatch.candidate.price),
-          unitPrice: new Prisma.Decimal(bestMatch.candidate.unitPrice),
-          date: createdAt,
-        },
-      });
+      await withDbRetry(client, "price.create.match", () =>
+        client.price.create({
+          data: {
+            productId: product.id,
+            storeId: store.id,
+            source: provider.provider,
+            sourceUrl: bestMatch.candidate.url,
+            price: new Prisma.Decimal(bestMatch.candidate.price),
+            unitPrice: new Prisma.Decimal(bestMatch.candidate.unitPrice),
+            date: createdAt,
+          },
+        }),
+      );
 
       results.push({
         productId: product.id,
@@ -691,6 +1031,9 @@ export async function syncLivePrices(client: PrismaClient = prisma, options?: Sy
       attemptedProducts: state.attemptedProducts,
       matchedProducts: state.matchedProducts,
       matchedPrices: state.matchedPrices,
+      discoveredCandidates: state.discoveredCandidates,
+      discoveredProducts: state.discoveredProducts,
+      discoveredPrices: state.discoveredPrices,
       skippedDuplicates: state.skippedDuplicates,
       hitRate,
       degradedFromHistory: state.degradedFromHistory,
@@ -702,7 +1045,7 @@ export async function syncLivePrices(client: PrismaClient = prisma, options?: Sy
   });
 
   return {
-    productsEvaluated: products.length,
+    productsEvaluated: runLegacyMatching ? products.length : discoveredProductIds.size,
     providersEvaluated: selectedProviders.length,
     matchedPrices: results.length,
     skippedDuplicates,

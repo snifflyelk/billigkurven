@@ -1,5 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { filterLogicalPriceEntries } from "@/lib/pricing-sanity";
+import { assessPriceRowQuality } from "@/lib/price-quality";
+import { buildBuyWindowPrediction } from "@/lib/price-prediction";
+import {
+  deriveMaxTravelKm,
+  haversineKm,
+  resolvePostalCodeCoordinates,
+  sanitizePostalCode,
+  sanitizePostalPrefix,
+  toCoordinates,
+} from "@/lib/geo";
 
 export type StoreTotal = {
   storeId: string;
@@ -15,6 +25,22 @@ export type StoreTotal = {
   membershipLockedProducts: string[];
 };
 
+function normalizeChainName(chain: string | null | undefined, fallback: string) {
+  const value = (chain ?? "").trim();
+  if (!value) return fallback;
+  return value.toUpperCase();
+}
+
+function median(values: number[]) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 0) {
+    return (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+  return sorted[mid];
+}
+
 export type DriverItem = {
   productId: string;
   productName: string;
@@ -25,6 +51,9 @@ export type DriverItem = {
     last7Avg: number | null;
     previous7Avg: number | null;
     changePct: number | null;
+    buyWindowScore: number | null;
+    confidencePct: number | null;
+    windowHint: string;
     action: "kjop-na" | "vent" | "ukjent";
   };
 };
@@ -41,6 +70,10 @@ export type CompareResult = {
   confidence: "lav" | "medium" | "hoy";
   trustMetrics: {
     trustScore: number;
+    qualityScore: number;
+    qualityCheckedRows: number;
+    qualityRejectedRows: number;
+    qualitySignals: Record<string, number>;
     averagePriceAgeDays: number | null;
     newestObservationHours: number | null;
     sourceDiversity: number;
@@ -65,9 +98,30 @@ export type CompareResult = {
       waitValue: number;
     };
   };
+  personalization: {
+    postalFilter: string | null;
+    filteredStoreCount: number;
+    availableStoreCount: number;
+  };
+  pricingTruth: {
+    promoAppliedItems: number;
+    loyaltyAppliedItems: number;
+    membershipLockedItems: number;
+  };
 };
 
-export async function compareShoppingList(shoppingListId: string): Promise<CompareResult> {
+export async function compareShoppingList(
+  shoppingListId: string,
+  options?: {
+    postalPrefix?: string | null;
+    postalCode?: string | null;
+    travelMode?: "DRIVE" | "WALK" | null;
+    maxTravelMinutes?: number | null;
+    maxTravelKm?: number | null;
+  },
+): Promise<CompareResult> {
+  const normalizedPostalPrefixOption = sanitizePostalPrefix(options?.postalPrefix ?? null) || null;
+  const normalizedPostalCodeOption = sanitizePostalCode(options?.postalCode ?? null) || null;
   const shoppingList = await prisma.shoppingList.findUnique({
     where: { id: shoppingListId },
     include: {
@@ -80,6 +134,7 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
                 include: { store: true },
                 where: { isQuarantined: false },
                 orderBy: { date: "desc" },
+                take: 320,
               },
             },
           },
@@ -101,6 +156,10 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
       confidence: "lav",
       trustMetrics: {
         trustScore: 0,
+        qualityScore: 0,
+        qualityCheckedRows: 0,
+        qualityRejectedRows: 0,
+        qualitySignals: {},
         averagePriceAgeDays: null,
         newestObservationHours: null,
         sourceDiversity: 0,
@@ -114,7 +173,7 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
         recommendedStore: null,
         why: [],
         riskFlags: ["Ingen handleliste valgt."],
-        nextActions: ["Legg til minst 3 varer i handlelisten for a aktivere anbefaling."],
+        nextActions: ["Legg til minst 3 varer i handlelisten for å aktivere anbefaling."],
         timingSummary: {
           buyNow: 0,
           wait: 0,
@@ -125,8 +184,29 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
           waitValue: 0,
         },
       },
+      personalization: {
+        postalFilter: normalizedPostalPrefixOption ?? (normalizedPostalCodeOption ? normalizedPostalCodeOption.slice(0, 1) : null),
+        filteredStoreCount: 0,
+        availableStoreCount: 0,
+      },
+      pricingTruth: {
+        promoAppliedItems: 0,
+        loyaltyAppliedItems: 0,
+        membershipLockedItems: 0,
+      },
     };
   }
+
+  const preferencePostalCode = sanitizePostalCode(shoppingList.user.preference?.postalCode ?? null) || null;
+  const preferencePostalPrefix = sanitizePostalPrefix(shoppingList.user.preference?.postalPrefix ?? null) || null;
+  const normalizedPostalCode = normalizedPostalCodeOption ?? preferencePostalCode;
+  const normalizedPostalPrefix = normalizedPostalPrefixOption ?? (normalizedPostalCode ? normalizedPostalCode.slice(0, 1) : preferencePostalPrefix);
+  const travelMode = options?.travelMode ?? shoppingList.user.preference?.travelMode ?? "DRIVE";
+  const maxTravelKm = deriveMaxTravelKm({
+    travelMode,
+    maxTravelKm: options?.maxTravelKm ?? shoppingList.user.preference?.maxTravelKm ?? null,
+    maxTravelMinutes: options?.maxTravelMinutes ?? shoppingList.user.preference?.maxTravelMinutes ?? null,
+  });
 
   const useMembershipPricing = shoppingList.user.preference?.useMembershipPricing ?? true;
 
@@ -161,6 +241,8 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
   }
 
   const storeTotals = new Map<string, StoreTotal>();
+  const allChainsEncountered = new Set<string>();
+  const filteredChainsEncountered = new Set<string>();
   const storeStats = new Map<string, {
     coveredItems: number;
     freshnessSamples: number[];
@@ -174,13 +256,76 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
   const freshnessSamples: number[] = [];
   const allSources = new Set<string>();
   const globallyFilteredOutlierStores = new Set<string>();
+  const rowQualitySignals = new Map<string, number>();
+  let qualityCheckedRows = 0;
+  let qualityRejectedRows = 0;
   let coveredItems = 0;
   let dataPoints = 0;
   const nowMs = Date.now();
 
+  const knownStores = new Map<string, {
+    chainName: string;
+    postalCode: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  }>();
+
+  for (const item of shoppingList.items) {
+    for (const priceRow of item.product.prices) {
+      const chainKey = normalizeChainName(priceRow.store.chain, priceRow.store.name);
+      if (!knownStores.has(priceRow.storeId)) {
+        knownStores.set(priceRow.storeId, {
+          chainName: chainKey,
+          postalCode: priceRow.store.postalCode,
+          latitude: priceRow.store.latitude,
+          longitude: priceRow.store.longitude,
+        });
+      }
+      allChainsEncountered.add(chainKey);
+    }
+  }
+
+  let accessibleChains = new Set<string>(allChainsEncountered);
+  const userCoordinates = await resolvePostalCodeCoordinates(normalizedPostalCode);
+  const hasDistanceConstraints = Boolean(userCoordinates && maxTravelKm !== null);
+
+  if (hasDistanceConstraints && userCoordinates && maxTravelKm !== null) {
+    accessibleChains = new Set<string>();
+    const storeEntries = Array.from(knownStores.values());
+    const resolvedStoreCoordinates = await Promise.all(
+      storeEntries.map(async (store) => {
+        const directCoordinates = toCoordinates({ latitude: store.latitude, longitude: store.longitude });
+        if (directCoordinates) return { store, coordinates: directCoordinates };
+        const postalCoordinates = await resolvePostalCodeCoordinates(store.postalCode);
+        return { store, coordinates: postalCoordinates };
+      }),
+    );
+
+    for (const entry of resolvedStoreCoordinates) {
+      if (!entry.coordinates) continue;
+      const distanceKm = haversineKm(userCoordinates, entry.coordinates);
+      if (distanceKm <= maxTravelKm) {
+        accessibleChains.add(entry.store.chainName);
+      }
+    }
+  }
+
+  if (accessibleChains.size === 0 && normalizedPostalPrefix) {
+    for (const store of Array.from(knownStores.values())) {
+      if ((store.postalCode ?? "").startsWith(normalizedPostalPrefix)) {
+        accessibleChains.add(store.chainName);
+      }
+    }
+  }
+
+  if (accessibleChains.size === 0) {
+    accessibleChains = new Set<string>(allChainsEncountered);
+  }
+
   for (const item of shoppingList.items) {
     const latestByStore = new Map<string, {
       storeName: string;
+      chainName: string;
       price: number;
       unitPrice: number;
       date: Date;
@@ -192,9 +337,32 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
 
     for (const priceRow of item.product.prices) {
       if (latestByStore.has(priceRow.storeId)) continue;
+
+      const quality = assessPriceRowQuality({
+        productName: item.product.name,
+        productBrand: item.product.brand,
+        source: priceRow.source,
+        sourceUrl: priceRow.sourceUrl,
+        packageQuantity: item.product.packageQuantity,
+        packageUnit: item.product.packageUnit,
+        price: Number(priceRow.price),
+        unitPrice: Number(priceRow.unitPrice),
+      });
+
+      qualityCheckedRows += 1;
+      if (!quality.accepted) {
+        qualityRejectedRows += 1;
+        for (const reason of quality.reasons) {
+          rowQualitySignals.set(reason, (rowQualitySignals.get(reason) ?? 0) + 1);
+        }
+        continue;
+      }
+
       const effective = effectivePriceForRow(priceRow);
+      const chainName = normalizeChainName(priceRow.store.chain, priceRow.store.name);
       latestByStore.set(priceRow.storeId, {
         storeName: priceRow.store.name,
+        chainName,
         price: effective.price,
         unitPrice: Number(priceRow.unitPrice),
         date: priceRow.date,
@@ -205,7 +373,9 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
       });
     }
 
-    const priceEntries = Array.from(latestByStore.entries());
+    const priceEntries = Array.from(latestByStore.entries()).filter(([, entry]) => {
+      return accessibleChains.has(entry.chainName);
+    });
     const filteredEntries = filterLogicalPriceEntries(
       priceEntries.map(([storeId, entry]) => ({ storeId, entry })),
       (row) => row.entry.price,
@@ -219,20 +389,72 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
     for (const outlierStoreId of Array.from(filteredEntries.outlierStoreIds.values())) {
       globallyFilteredOutlierStores.add(outlierStoreId);
     }
-    const logicalPriceEntries = filteredEntries.validEntries.map((row) => [row.storeId, row.entry] as const);
-    if (logicalPriceEntries.length === 0) continue;
+    const logicalPriceEntries = filteredEntries.validEntries.map((row) => row.entry);
+
+    const chainGroups = new Map<string, {
+      prices: number[];
+      unitPrices: number[];
+      dates: Date[];
+      sources: string[];
+      promoUsed: boolean;
+      loyaltyUsed: boolean;
+      membershipLocked: boolean;
+    }>();
+
+    for (const entry of logicalPriceEntries) {
+      filteredChainsEncountered.add(entry.chainName);
+      const bucket = chainGroups.get(entry.chainName) ?? {
+        prices: [],
+        unitPrices: [],
+        dates: [],
+        sources: [],
+        promoUsed: false,
+        loyaltyUsed: false,
+        membershipLocked: false,
+      };
+      bucket.prices.push(entry.price);
+      bucket.unitPrices.push(entry.unitPrice);
+      bucket.dates.push(entry.date);
+      bucket.sources.push(entry.source || "unknown");
+      if (entry.usedPromo) bucket.promoUsed = true;
+      if (entry.usedLoyalty) bucket.loyaltyUsed = true;
+      if (entry.membershipLocked) bucket.membershipLocked = true;
+      chainGroups.set(entry.chainName, bucket);
+    }
+
+    const chainEntries = Array.from(chainGroups.entries())
+      .map(([chainName, bucket]) => {
+        const chainPrice = median(bucket.prices);
+        const chainUnitPrice = median(bucket.unitPrices);
+        if (chainPrice === null || chainUnitPrice === null) return null;
+        const latestDate = bucket.dates.sort((a, b) => b.getTime() - a.getTime())[0] ?? new Date();
+        return {
+          chainName,
+          price: chainPrice,
+          unitPrice: chainUnitPrice,
+          date: latestDate,
+          source: bucket.sources[0] ?? "unknown",
+          usedPromo: bucket.promoUsed,
+          usedLoyalty: bucket.loyaltyUsed,
+          membershipLocked: bucket.membershipLocked,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+    if (chainEntries.length === 0) continue;
     coveredItems += 1;
-    dataPoints += logicalPriceEntries.length;
+    dataPoints += chainEntries.length;
 
     let minPrice = Number.POSITIVE_INFINITY;
     let maxPrice = 0;
 
-    for (const [storeId, entry] of logicalPriceEntries) {
+    for (const entry of chainEntries) {
+      const chainId = entry.chainName;
       const totalForItem = entry.price * item.quantity;
       const ageDays = (nowMs - entry.date.getTime()) / (1000 * 60 * 60 * 24);
       freshnessSamples.push(ageDays);
       allSources.add(entry.source || "unknown");
-      const stats = storeStats.get(storeId) ?? {
+      const stats = storeStats.get(chainId) ?? {
         coveredItems: 0,
         freshnessSamples: [],
         sources: new Set<string>(),
@@ -250,14 +472,14 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
         stats.membershipLockedItems += 1;
         stats.membershipLockedProducts.add(item.product.name);
       }
-      storeStats.set(storeId, stats);
-      const existing = storeTotals.get(storeId);
+      storeStats.set(chainId, stats);
+      const existing = storeTotals.get(chainId);
       if (existing) {
         existing.totalPrice += totalForItem;
       } else {
-        storeTotals.set(storeId, {
-          storeId,
-          storeName: entry.storeName,
+        storeTotals.set(chainId, {
+          storeId: chainId,
+          storeName: chainId,
           totalPrice: totalForItem,
           coveredItems: 0,
           averageAgeDays: null,
@@ -294,8 +516,16 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
         ? Number((((last7Avg - previous7Avg) / previous7Avg) * 100).toFixed(1))
         : null;
 
-    const action: DriverItem["trend"]["action"] =
-      changePct === null ? "ukjent" : changePct <= -3 ? "kjop-na" : changePct >= 3 ? "vent" : "ukjent";
+    const prediction = buildBuyWindowPrediction(
+      item.product.prices.map((priceRow) => ({
+        price: effectivePriceForRow(priceRow).price,
+        date: priceRow.date,
+      })),
+    );
+    const action: DriverItem["trend"]["action"] = prediction.action;
+    const confidencePct = prediction.confidencePct;
+    const buyWindowScore = prediction.buyWindowScore;
+    const windowHint = prediction.windowHint;
 
     priceDrivers.push({
       productId: item.productId,
@@ -307,6 +537,9 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
         last7Avg: last7Avg !== null ? Number(last7Avg.toFixed(2)) : null,
         previous7Avg: previous7Avg !== null ? Number(previous7Avg.toFixed(2)) : null,
         changePct,
+        buyWindowScore,
+        confidencePct,
+        windowHint,
         action,
       },
     });
@@ -354,7 +587,8 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
   const sourceDiversity = allSources.size;
   const freshnessScore = averagePriceAgeDays === null ? 0 : Math.max(0, Math.min(100, Math.round((1 - averagePriceAgeDays / 14) * 100)));
   const sourceScore = Math.max(0, Math.min(100, sourceDiversity * 25));
-  const trustScore = Math.round(coverageScore * 0.5 + freshnessScore * 0.3 + sourceScore * 0.2);
+  const qualityScore = qualityCheckedRows > 0 ? Math.round(((qualityCheckedRows - qualityRejectedRows) / qualityCheckedRows) * 100) : 0;
+  const trustScore = Math.round(coverageScore * 0.45 + freshnessScore * 0.25 + sourceScore * 0.15 + qualityScore * 0.15);
 
   const minCoveredForRecommendation = Math.max(3, Math.ceil(analyzedItems * 0.6));
   const shouldAutoRecommend = Boolean(
@@ -362,7 +596,8 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
       (
         confidence === "hoy" ||
         (confidence === "medium" && coveredItems >= minCoveredForRecommendation)
-      ),
+      ) &&
+      qualityScore >= 70,
   );
 
   const buyNowCount = priceDrivers.filter((item) => item.trend.action === "kjop-na").length;
@@ -382,10 +617,11 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
   );
 
   const riskFlags: string[] = [];
-  if (coverageScore < 65) riskFlags.push("Lav handleliste-dekning gir hoyere beslutningsrisiko.");
+  if (coverageScore < 65) riskFlags.push("Lav handleliste-dekning gir høyere beslutningsrisiko.");
   if ((averagePriceAgeDays ?? 99) > 3) riskFlags.push("Prisgrunnlaget er eldre enn 3 dager i snitt.");
   if (sourceDiversity < 2) riskFlags.push("Lav kildediversitet for denne sammenligningen.");
-  if (globallyFilteredOutlierStores.size > 0) riskFlags.push(`${globallyFilteredOutlierStores.size} butikkdatasett ble filtrert som prisavvik.`);
+  if (qualityScore < 70) riskFlags.push("For mange prisrader ble avvist i kvalitetskontrollen av produktmatch.");
+  if (globallyFilteredOutlierStores.size > 0) riskFlags.push(`${globallyFilteredOutlierStores.size} kjededatasett ble filtrert som prisavvik.`);
   if ((cheapestStore?.membershipLockedItems ?? 0) > 0) riskFlags.push("Noen gevinster krever medlemspris.");
 
   const why: string[] = [];
@@ -393,21 +629,24 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
     why.push(`Billigste observerte total er ${Number(cheapestStore.totalPrice.toFixed(2))} hos ${cheapestStore.storeName}.`);
   }
   why.push(`Dekning ${coveredItems}/${analyzedItems} varer med ${dataPoints} datapunkter.`);
-  why.push(`Tillitsscore ${trustScore}/100 basert pa dekning, prisalder og kildediversitet.`);
+  why.push(`Tillitsscore ${trustScore}/100 basert på dekning, prisalder, kildediversitet og kvalitetsmatch.`);
 
   const nextActions: string[] = [];
   if (!shouldAutoRecommend) {
-    nextActions.push("Last opp en kvittering for a styrke verifisert matching.");
+    nextActions.push("Last opp en kvittering for å styrke verifisert matching.");
     nextActions.push("Legg til flere varer i handlelisten for bredere dekning.");
   }
   if (waitCount > buyNowCount) {
-    nextActions.push("Sett prisvarsel pa varene med vent-signal for bedre kjopstidspunkt.");
+    nextActions.push("Sett prisvarsel på varene med vent-signal for bedre kjøpstidspunkt.");
+  }
+  if (qualityScore < 70) {
+    nextActions.push("Forbedre datakvalitet: prioriter kjeder og varer med svak produktmatch i kilde-URLer.");
   }
   if ((cheapestStore?.membershipLockedItems ?? 0) > 0) {
     nextActions.push("Aktiver medlemspriser i preferanser hvis du har medlemskap.");
   }
   if (nextActions.length === 0) {
-    nextActions.push("Kjor planen i dag og verifiser resultatet med kvittering etter handel.");
+    nextActions.push("Kjør planen i dag og verifiser resultatet med kvittering etter handel.");
   }
 
   const recommendation = shouldAutoRecommend
@@ -448,6 +687,10 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
         },
       };
 
+  const promoAppliedItems = totals.reduce((sum, row) => sum + row.promoAppliedItems, 0);
+  const loyaltyAppliedItems = totals.reduce((sum, row) => sum + row.loyaltyAppliedItems, 0);
+  const membershipLockedItems = totals.reduce((sum, row) => sum + row.membershipLockedItems, 0);
+
   return {
     cheapestStore,
     totals: totals.map((entry) => ({ ...entry, totalPrice: Number(entry.totalPrice.toFixed(2)) })),
@@ -460,6 +703,10 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
     confidence,
     trustMetrics: {
       trustScore,
+      qualityScore,
+      qualityCheckedRows,
+      qualityRejectedRows,
+      qualitySignals: Object.fromEntries(Array.from(rowQualitySignals.entries()).sort((a, b) => b[1] - a[1])),
       averagePriceAgeDays,
       newestObservationHours,
       sourceDiversity,
@@ -467,5 +714,16 @@ export async function compareShoppingList(shoppingListId: string): Promise<Compa
       filteredOutlierStores: globallyFilteredOutlierStores.size,
     },
     recommendation,
+    personalization: {
+      postalFilter: normalizedPostalPrefix,
+      filteredStoreCount:
+        normalizedPostalPrefix || hasDistanceConstraints ? filteredChainsEncountered.size : allChainsEncountered.size,
+      availableStoreCount: allChainsEncountered.size,
+    },
+    pricingTruth: {
+      promoAppliedItems,
+      loyaltyAppliedItems,
+      membershipLockedItems,
+    },
   };
 }

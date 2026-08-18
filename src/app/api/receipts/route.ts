@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { badRequest, serverError } from "@/lib/api-response";
+import { apiError, badRequest, serverError } from "@/lib/api-response";
 import { buildReceiptSavingsInsight } from "@/lib/verified-savings";
-import { getOrCreateSessionUserId } from "@/lib/user-session";
+import { getAuthenticatedSessionUserId } from "@/lib/user-session";
 
 async function buildProductCandidates() {
   const products = await prisma.product.findMany({
@@ -38,7 +38,15 @@ async function buildProductCandidates() {
 
 export async function GET() {
   try {
-    const userId = await getOrCreateSessionUserId();
+    const userId = await getAuthenticatedSessionUserId();
+    if (!userId) {
+      return apiError(401, {
+        error: "Innlogging kreves.",
+        hint: "Logg inn for a hente personlige kvitteringer.",
+        code: "UNAUTHORIZED",
+      });
+    }
+
     const receipts = await prisma.receiptSubmission.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -46,14 +54,22 @@ export async function GET() {
 
     return NextResponse.json({ receipts });
   } catch (error) {
-    return serverError(error, "Kunne ikke hente kvitteringer akkurat na.");
+    return serverError(error, "Kunne ikke hente kvitteringer akkurat nå.");
   }
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const userId = await getOrCreateSessionUserId();
+    const userId = await getAuthenticatedSessionUserId();
+    if (!userId) {
+      return apiError(401, {
+        error: "Innlogging kreves.",
+        hint: "Logg inn for a sende inn kvittering.",
+        code: "UNAUTHORIZED",
+      });
+    }
+
     const fileName = String(body.fileName ?? "kvittering.png");
 
     if (!fileName.trim()) {

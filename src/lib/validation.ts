@@ -21,10 +21,20 @@ export const shoppingListItemUpdateSchema = z.object({
 
 export const compareSchema = z.object({
   shoppingListId: z.string().min(1),
+  postalPrefix: z.string().trim().regex(/^\d{2,4}$/).optional(),
+  postalCode: z.string().trim().regex(/^\d{4}$/).optional(),
+  travelMode: z.enum(["DRIVE", "WALK"]).optional(),
+  maxTravelMinutes: z.number().int().min(1).max(240).optional(),
+  maxTravelKm: z.number().min(1).max(300).optional(),
 });
 
 export const userPreferenceSchema = z.object({
   userId: z.string().min(1),
+  postalCode: z.string().regex(/^\d{4}$/).nullable().optional(),
+  postalPrefix: z.string().regex(/^\d$/).nullable().optional(),
+  travelMode: z.enum(["DRIVE", "WALK"]).optional(),
+  maxTravelMinutes: z.number().int().min(1).max(240).nullable().optional(),
+  maxTravelKm: z.number().min(1).max(300).nullable().optional(),
   primaryStore: z.string().min(1).max(120),
   priceSensitivity: z.number().int().min(0).max(100),
   useMembershipPricing: z.boolean().optional(),

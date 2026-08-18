@@ -63,7 +63,11 @@ export function PriceHistoryChart({
       ) : (
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
-          <XAxis dataKey="date" tickFormatter={(v) => new Date(v).toLocaleDateString("nb-NO", { month: "short", day: "numeric" })} />
+          <XAxis
+            dataKey="date"
+            minTickGap={28}
+            tickFormatter={(v) => new Date(v).toLocaleDateString("nb-NO", { month: "short", day: "numeric" })}
+          />
           <YAxis tickFormatter={(value) => `${Math.round(value)} kr`} width={50} />
           <Tooltip
             labelFormatter={(v) => new Date(v).toLocaleDateString("nb-NO")}

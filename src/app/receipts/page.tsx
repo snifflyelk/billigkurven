@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { buildReceiptSavingsInsight } from "@/lib/verified-savings";
 import { formatNok } from "@/lib/utils";
-import { getOrCreateSessionUserId } from "@/lib/user-session";
+import { requireAuthenticatedSessionUserId } from "@/lib/user-session";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReceiptsPage() {
-  const userId = await getOrCreateSessionUserId();
+  const userId = await requireAuthenticatedSessionUserId("/receipts");
   const products = await prisma.product.findMany({
     include: {
       prices: {
@@ -46,7 +46,7 @@ export default async function ReceiptsPage() {
   });
 
   function getConfidenceTone(confidence: string) {
-    if (confidence === "hoy") return "Høy";
+    if (confidence === "høy") return "Høy";
     if (confidence === "medium") return "Medium";
     return "Lav";
   }
@@ -99,7 +99,7 @@ export default async function ReceiptsPage() {
                           verifiedSavings: receipt.verifiedSavings ? Number(receipt.verifiedSavings) : null,
                           matchedItems: receipt.matchedItems ?? 0,
                           totalItems: receipt.totalItems ?? 0,
-                          confidence: receipt.savingsConfidence as "lav" | "medium" | "hoy",
+                          confidence: receipt.savingsConfidence as "lav" | "medium" | "høy",
                           note: receipt.savingsNote ?? "",
                         }
                       : null;

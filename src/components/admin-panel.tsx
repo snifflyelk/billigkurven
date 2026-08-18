@@ -31,6 +31,16 @@ type SourceStat = {
   latestAt: string | null;
 };
 
+type ImageReviewCandidate = {
+  id: string;
+  name: string;
+  brand: string;
+  ean: string;
+  category: string;
+  imageUrl: string | null;
+  reason: "missing" | "invalid-url" | "possible-mismatch";
+};
+
 type ProviderSyncMetric = {
   provider: string;
   chain: string;
@@ -46,21 +56,49 @@ type ProviderSyncMetric = {
   latestObservationHours: number | null;
 };
 
+type OfferScanRow = {
+  label: string;
+  offerPrice: number;
+  matched: boolean;
+  matchScore: number | null;
+  productName: string | null;
+  latestChainPrice: number | null;
+  avg30: number | null;
+  trendAction: "kjop-na" | "vent" | "ukjent";
+  trendScore: number | null;
+  deviationVs30Pct: number | null;
+  verdict: "sterkt-tilbud" | "ok-tilbud" | "svakt-tilbud" | "ukjent";
+  dataPoints: number;
+};
+
 export function AdminPanel({
   products,
   prices,
   stores,
   initialSourceStats,
+  imageReviewCandidates,
 }: {
   products: Product[];
   prices: Price[];
   stores: { id: string; name: string }[];
   initialSourceStats: SourceStat[];
+  imageReviewCandidates: ImageReviewCandidate[];
 }) {
   const { showToast } = useToast();
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [imageSyncStatus, setImageSyncStatus] = useState<string | null>(null);
+  const [imageSyncing, setImageSyncing] = useState(false);
   const [providerMetrics, setProviderMetrics] = useState<ProviderSyncMetric[]>([]);
+  const [offerScanStatus, setOfferScanStatus] = useState<string | null>(null);
+  const [offerScanRunning, setOfferScanRunning] = useState(false);
+  const [offerScanRows, setOfferScanRows] = useState<OfferScanRow[]>([]);
+  const [offerScanForm, setOfferScanForm] = useState({
+    chain: "Kiwi",
+    flyerUrl: "",
+    flyerText: "",
+    maxItems: "40",
+  });
   const [productForm, setProductForm] = useState({
     name: "",
     brand: "",
@@ -200,6 +238,82 @@ export function AdminPanel({
     }
   }
 
+  async function refreshSuspiciousImages() {
+    setImageSyncing(true);
+    setImageSyncStatus(null);
+
+    try {
+      const payload = await apiRequest<{
+        attemptedProducts: number;
+        refreshedCandidates: number;
+        remainingCandidates: number;
+      }>("/api/admin/images/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 80 }),
+      });
+
+      const message = `Sjekket ${payload.attemptedProducts} produkter. Forbedret ${payload.refreshedCandidates}. Gjenstår ${payload.remainingCandidates}.`;
+      setImageSyncStatus(message);
+      showToast({ title: "Bildejobb fullfort", description: message, type: "success" });
+      window.location.reload();
+    } catch (error) {
+      const text = toUserErrorMessage(error, "Ukjent feil ved bildeforbedring.");
+      setImageSyncStatus(text);
+      showToast({
+        title: "Bildejobb feilet",
+        description: text,
+        type: "error",
+        actionLabel: "Prøv igjen",
+        onAction: refreshSuspiciousImages,
+      });
+    } finally {
+      setImageSyncing(false);
+    }
+  }
+
+  async function runOfferScan() {
+    setOfferScanRunning(true);
+    setOfferScanStatus(null);
+
+    try {
+      const maxItems = Number(offerScanForm.maxItems);
+      const payload = await apiRequest<{
+        scannedItems: number;
+        matchedItems: number;
+        strongDeals: number;
+        comparisons: OfferScanRow[];
+      }>("/api/admin/offers/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chain: offerScanForm.chain,
+          flyerUrl: offerScanForm.flyerUrl || undefined,
+          flyerText: offerScanForm.flyerText || undefined,
+          maxItems: Number.isFinite(maxItems) ? maxItems : 40,
+        }),
+      });
+
+      setOfferScanRows(payload.comparisons ?? []);
+      const message = `Skannet ${payload.scannedItems} linjer. Matchet ${payload.matchedItems}. Sterke tilbud: ${payload.strongDeals}.`;
+      setOfferScanStatus(message);
+      showToast({ title: "Tilbudsavis skannet", description: message, type: "success" });
+    } catch (error) {
+      const text = toUserErrorMessage(error, "Ukjent feil ved tilbudsavis-scan.");
+      setOfferScanStatus(text);
+      showToast({
+        title: "Tilbudsavis-scan feilet",
+        description: text,
+        type: "error",
+        actionLabel: "Prov igjen",
+        onAction: runOfferScan,
+      });
+    } finally {
+      setOfferScanRunning(false);
+    }
+  }
+
+
   return (
     <div className="space-y-8">
       <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-50">
@@ -302,6 +416,150 @@ export function AdminPanel({
             </table>
           </div>
         )}
+      </section>
+
+      <section className="rounded-3xl border border-amber-200 bg-amber-50/60 p-5 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/20">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Produktbilder til gjennomgang</h2>
+            <p className="mt-1 text-sm text-amber-900/80 dark:text-amber-100/80">
+              Viser produkter med manglende bilde eller mulig bilde-mismatch.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={refreshSuspiciousImages}
+            disabled={imageSyncing}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-white transition hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {imageSyncing ? "Kjører bildejobb..." : "Kjør bildeforbedring"}
+          </button>
+        </div>
+        {imageSyncStatus ? <p className="mt-3 text-sm text-amber-900 dark:text-amber-100">{imageSyncStatus}</p> : null}
+
+        {imageReviewCandidates.length === 0 ? (
+          <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-300">Ingen mistenkelige produktbilder funnet akkurat nå.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-xl border border-amber-300/70 bg-white/80 dark:border-amber-900/40 dark:bg-slate-950/40">
+            <table className="min-w-[56rem] w-full text-left text-xs">
+              <thead className="bg-amber-100/70 dark:bg-amber-900/30">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">Produkt</th>
+                  <th className="px-3 py-2 font-semibold">Merke</th>
+                  <th className="px-3 py-2 font-semibold">Kategori</th>
+                  <th className="px-3 py-2 font-semibold">Årsak</th>
+                  <th className="px-3 py-2 font-semibold">Handling</th>
+                </tr>
+              </thead>
+              <tbody>
+                {imageReviewCandidates.slice(0, 80).map((item) => (
+                  <tr key={item.id} className="border-t border-amber-200/80 dark:border-amber-900/30">
+                    <td className="px-3 py-2 font-medium">{item.name}</td>
+                    <td className="px-3 py-2">{item.brand}</td>
+                    <td className="px-3 py-2">{item.category}</td>
+                    <td className="px-3 py-2">
+                      {item.reason === "missing" ? "Mangler bilde" : item.reason === "invalid-url" ? "Ugyldig bildeadresse" : "Mulig feil produktbilde"}
+                    </td>
+                    <td className="px-3 py-2">
+                      <a href={`/product/${item.id}`} className="font-semibold text-amber-700 hover:underline dark:text-amber-300">
+                        Åpne produkt
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl border border-cyan-200 bg-cyan-50/60 p-5 shadow-sm dark:border-cyan-900/60 dark:bg-cyan-950/20">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Tilbudsavis-scan mot pristrend</h2>
+            <p className="mt-1 text-sm text-cyan-900/80 dark:text-cyan-100/80">
+              Lim inn tekst fra tilbudsavis eller URL. Motoren matcher varer og sammenligner tilbudspris med historikk i samme kjede.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={runOfferScan}
+            disabled={offerScanRunning}
+            className="rounded-lg bg-cyan-700 px-4 py-2 text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {offerScanRunning ? "Scanner..." : "Scan tilbudsavis"}
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-2 md:grid-cols-2">
+          <input
+            value={offerScanForm.chain}
+            onChange={(e) => setOfferScanForm((prev) => ({ ...prev, chain: e.target.value }))}
+            placeholder="Kjede, f.eks. Kiwi"
+            className="rounded-lg border border-cyan-300 px-3 py-2 dark:border-cyan-900 dark:bg-slate-950"
+          />
+          <input
+            value={offerScanForm.flyerUrl}
+            onChange={(e) => setOfferScanForm((prev) => ({ ...prev, flyerUrl: e.target.value }))}
+            placeholder="Valgfri URL til tilbudsavis"
+            className="rounded-lg border border-cyan-300 px-3 py-2 dark:border-cyan-900 dark:bg-slate-950"
+          />
+          <input
+            value={offerScanForm.maxItems}
+            onChange={(e) => setOfferScanForm((prev) => ({ ...prev, maxItems: e.target.value }))}
+            placeholder="Maks linjer, f.eks. 40"
+            className="rounded-lg border border-cyan-300 px-3 py-2 dark:border-cyan-900 dark:bg-slate-950"
+          />
+          <div className="text-xs text-cyan-900/80 dark:text-cyan-100/80 md:self-center">
+            Tips: Ved PDF-bilder lim inn OCR-tekst i feltet under for bedre treff.
+          </div>
+        </div>
+
+        <textarea
+          value={offerScanForm.flyerText}
+          onChange={(e) => setOfferScanForm((prev) => ({ ...prev, flyerText: e.target.value }))}
+          rows={7}
+          placeholder="Lim inn tilbudstekst her (valgfritt hvis URL brukes)"
+          className="mt-3 w-full rounded-lg border border-cyan-300 px-3 py-2 dark:border-cyan-900 dark:bg-slate-950"
+        />
+
+        {offerScanStatus ? <p className="mt-3 text-sm text-cyan-900 dark:text-cyan-100">{offerScanStatus}</p> : null}
+
+        {offerScanRows.length > 0 ? (
+          <div className="mt-4 overflow-x-auto rounded-xl border border-cyan-300/70 bg-white/90 dark:border-cyan-900/40 dark:bg-slate-950/40">
+            <table className="min-w-[72rem] w-full text-left text-xs">
+              <thead className="bg-cyan-100/80 dark:bg-cyan-900/30">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">Tilbudslinje</th>
+                  <th className="px-3 py-2 font-semibold">Tilbudspris</th>
+                  <th className="px-3 py-2 font-semibold">Match</th>
+                  <th className="px-3 py-2 font-semibold">Siste kjedepris</th>
+                  <th className="px-3 py-2 font-semibold">Snitt 30d</th>
+                  <th className="px-3 py-2 font-semibold">Avvik 30d</th>
+                  <th className="px-3 py-2 font-semibold">Trend</th>
+                  <th className="px-3 py-2 font-semibold">Dom</th>
+                </tr>
+              </thead>
+              <tbody>
+                {offerScanRows.map((row, index) => (
+                  <tr key={`${row.label}-${index}`} className="border-t border-cyan-200/80 dark:border-cyan-900/30">
+                    <td className="px-3 py-2">
+                      <p className="font-medium">{row.label}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">{row.productName ?? "Ingen sikker produktmatch"}</p>
+                    </td>
+                    <td className="px-3 py-2">{row.offerPrice.toFixed(2)} kr</td>
+                    <td className="px-3 py-2">{row.matchScore !== null ? `${Math.round(row.matchScore * 100)}%` : "-"}</td>
+                    <td className="px-3 py-2">{row.latestChainPrice !== null ? `${row.latestChainPrice.toFixed(2)} kr` : "-"}</td>
+                    <td className="px-3 py-2">{row.avg30 !== null ? `${row.avg30.toFixed(2)} kr` : "-"}</td>
+                    <td className="px-3 py-2">{row.deviationVs30Pct !== null ? `${row.deviationVs30Pct > 0 ? "+" : ""}${row.deviationVs30Pct}%` : "-"}</td>
+                    <td className="px-3 py-2">{row.trendAction === "kjop-na" ? "Kjop-na" : row.trendAction === "vent" ? "Vent" : "Ukjent"}</td>
+                    <td className="px-3 py-2">{row.verdict}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">

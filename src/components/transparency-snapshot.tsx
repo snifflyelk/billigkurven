@@ -79,7 +79,7 @@ export function TransparencySnapshot({
           <span className="h-1.5 w-10 rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden />
         </div>
         <p className="mt-3">
-          Vi sporer na {metrics.trackedProducts} produkter pa tvers av {metrics.trackedStores} butikker. Nyeste brukbare observasjon er {metrics.freshestObservationHours !== null ? `${metrics.freshestObservationHours} timer gammel` : "ikke tilgjengelig"}.
+          Vi sporer nå {metrics.trackedProducts} produkter på tvers av {metrics.trackedStores} butikker. Nyeste brukbare observasjon er {metrics.freshestObservationHours !== null ? `${metrics.freshestObservationHours} timer gammel` : "ikke tilgjengelig"}.
         </p>
         <span className="mt-1 block">Prisrader eldre enn 72 timer: {metrics.stalePrices72h} ({metrics.staleRatio72h}%).</span>
       </div>

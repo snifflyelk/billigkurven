@@ -29,6 +29,12 @@ export function buildTimingSignal(prices: PricePoint[]) {
     last7Avg !== null && previous7Avg !== null && previous7Avg > 0
       ? Number((((last7Avg - previous7Avg) / previous7Avg) * 100).toFixed(1))
       : null;
+  const dropFromLast7Pct =
+    prices.length > 0 && last7Avg !== null && last7Avg > 0
+      ? Number((((last7Avg - prices[0].price) / last7Avg) * 100).toFixed(1))
+      : null;
+  const sampleSize = last7.length + previous7.length;
+  const confidencePct = sampleSize > 0 ? Math.max(30, Math.min(95, sampleSize * 8)) : null;
 
   const recommendation: TimingRecommendation =
     changePct === null ? "ukjent" : changePct <= -3 ? "kjop-na" : changePct >= 3 ? "vent" : "noytral";
@@ -36,6 +42,8 @@ export function buildTimingSignal(prices: PricePoint[]) {
   return {
     recommendation,
     changePct,
+    dropFromLast7Pct,
+    confidencePct,
     last7Avg: last7Avg !== null ? Number(last7Avg.toFixed(2)) : null,
     previous7Avg: previous7Avg !== null ? Number(previous7Avg.toFixed(2)) : null,
   };
@@ -44,15 +52,36 @@ export function buildTimingSignal(prices: PricePoint[]) {
 export function buildAlertUrgency(args: {
   latestPrice: number | null;
   targetPrice: number | null;
+  targetDropPct?: number | null;
+  dropFromLast7Pct?: number | null;
   recommendation: TimingRecommendation;
 }) {
+  if (
+    args.targetDropPct !== null &&
+    args.targetDropPct !== undefined &&
+    args.dropFromLast7Pct !== null &&
+    args.dropFromLast7Pct !== undefined &&
+    args.dropFromLast7Pct >= args.targetDropPct
+  ) {
+    return { level: "hoy", label: `Prisfall ${args.dropFromLast7Pct}%` } as const;
+  }
+
+  if (
+    (args.targetDropPct === null || args.targetDropPct === undefined) &&
+    args.dropFromLast7Pct !== null &&
+    args.dropFromLast7Pct !== undefined &&
+    args.dropFromLast7Pct >= 10
+  ) {
+    return { level: "medium", label: `Prisfall ${args.dropFromLast7Pct}%` } as const;
+  }
+
   if (args.latestPrice !== null && args.targetPrice !== null) {
     const delta = Number((args.latestPrice - args.targetPrice).toFixed(2));
-    if (delta <= 0) return { level: "hoy", label: "Maal oppnadd" } as const;
+    if (delta <= 0) return { level: "hoy", label: "Mål oppnådd" } as const;
     if (delta <= 3) return { level: "medium", label: "Nesten der" } as const;
   }
 
-  if (args.recommendation === "kjop-na") return { level: "medium", label: "Kjop-na signal" } as const;
+  if (args.recommendation === "kjop-na") return { level: "medium", label: "Kjøp-nå signal" } as const;
   if (args.recommendation === "vent") return { level: "lav", label: "Vent signal" } as const;
   return { level: "lav", label: "Ingen sterk trigger" } as const;
 }

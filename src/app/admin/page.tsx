@@ -1,17 +1,19 @@
 import { AdminPanel } from "@/components/admin-panel";
 import { prisma } from "@/lib/prisma";
+import { listProductImageReviewCandidates } from "@/lib/product-image-quality";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const [products, rawPrices, stores] = await Promise.all([
+  const [products, rawPrices, stores, imageReviewCandidates] = await Promise.all([
     prisma.product.findMany({ orderBy: { createdAt: "desc" } }),
     prisma.price.findMany({
       include: { product: true, store: true },
       orderBy: { date: "desc" },
     }),
     prisma.store.findMany({ orderBy: { name: "asc" } }),
+    listProductImageReviewCandidates(120),
   ]);
 
   const prices = rawPrices.map((price) => ({
@@ -93,7 +95,7 @@ export default async function AdminPage() {
         </article>
       </section>
       <div className="mt-8">
-        <AdminPanel products={products} prices={prices} stores={stores} initialSourceStats={initialSourceStats} />
+        <AdminPanel products={products} prices={prices} stores={stores} initialSourceStats={initialSourceStats} imageReviewCandidates={imageReviewCandidates} />
       </div>
     </main>
   );

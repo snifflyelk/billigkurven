@@ -19,7 +19,7 @@ export async function GET(
     });
 
     if (!product) {
-      return notFound("Fant ikke produkt.", "Kontroller produkt-ID eller hent produktlisten pa nytt.");
+      return notFound("Fant ikke produkt.", "Kontroller produkt-ID eller hent produktlisten på nytt.");
     }
 
     const latestByStore = new Map<string, (typeof product.prices)[number]>();
@@ -30,23 +30,23 @@ export async function GET(
     }
 
     const now = Date.now();
-    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const dayMs = 24 * 60 * 60 * 1000;
+    const historyDays = 45;
     const historyBuckets = new Map<number, number[]>();
     for (const price of product.prices) {
-      const ageWeeks = Math.floor((now - price.date.getTime()) / weekMs);
-      if (ageWeeks < 0 || ageWeeks > 7) continue;
-      const bucketIndex = 7 - ageWeeks;
+      const ageDays = Math.floor((now - price.date.getTime()) / dayMs);
+      if (ageDays < 0 || ageDays > historyDays - 1) continue;
+      const bucketIndex = historyDays - 1 - ageDays;
       const current = historyBuckets.get(bucketIndex) ?? [];
       current.push(Number(price.price));
       historyBuckets.set(bucketIndex, current);
     }
 
-    const latest = Number(product.prices[0]?.price ?? 0);
-    const priceHistory = Array.from({ length: 8 }).map((_, i) => {
-      const date = new Date(now - (7 - i) * weekMs).toISOString();
+    const priceHistory = Array.from({ length: historyDays }).map((_, i) => {
+      const date = new Date(now - (historyDays - 1 - i) * dayMs).toISOString();
       const values = historyBuckets.get(i) ?? [];
       const averagePrice =
-        values.length > 0 ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)) : latest;
+        values.length > 0 ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)) : null;
       return {
         date,
         averagePrice,
@@ -81,6 +81,6 @@ export async function GET(
       changePct,
     });
   } catch (error) {
-    return serverError(error, "Kunne ikke hente produktdata akkurat na.");
+    return serverError(error, "Kunne ikke hente produktdata akkurat nå.");
   }
 }

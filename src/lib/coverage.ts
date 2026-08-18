@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
 function safeNumber(value: number, digits = 2) {
@@ -36,7 +37,7 @@ export type CoverageMetrics = {
   note: string;
 };
 
-export async function getCoverageMetrics({
+async function computeCoverageMetrics({
   region = "",
   postalCode = "",
   postalPrefix = "",
@@ -45,29 +46,25 @@ export async function getCoverageMetrics({
   postalCode?: string;
   postalPrefix?: string;
 } = {}): Promise<CoverageMetrics> {
-  const normalizedRegion = region.trim().toLowerCase();
-  const normalizedPostalCode = postalCode.trim();
-  const normalizedPostalPrefix = postalPrefix.trim();
-
   const stores = await prisma.store.findMany({
     where: {
-      ...(normalizedRegion
+      ...(region
         ? {
             OR: [
-              { location: { contains: normalizedRegion, mode: "insensitive" } },
-              { chain: { contains: normalizedRegion, mode: "insensitive" } },
-              { name: { contains: normalizedRegion, mode: "insensitive" } },
+              { location: { contains: region, mode: "insensitive" } },
+              { chain: { contains: region, mode: "insensitive" } },
+              { name: { contains: region, mode: "insensitive" } },
             ],
           }
         : {}),
-      ...(normalizedPostalCode ? { postalCode: normalizedPostalCode } : {}),
-      ...(normalizedPostalPrefix ? { postalCode: { startsWith: normalizedPostalPrefix } } : {}),
+      ...(postalCode ? { postalCode } : {}),
+      ...(postalPrefix ? { postalCode: { startsWith: postalPrefix } } : {}),
     },
-    select: { id: true, name: true, chain: true, location: true, postalCode: true },
+    select: { id: true, chain: true, postalCode: true },
   });
 
   const storeIds = new Set(stores.map((store) => store.id));
-  const products = await prisma.product.findMany({ select: { id: true } });
+  const productsCount = await prisma.product.count();
 
   const rows = await prisma.price.findMany({
     where: {
@@ -75,7 +72,7 @@ export async function getCoverageMetrics({
       ...(stores.length > 0 ? { storeId: { in: Array.from(storeIds) } } : {}),
     },
     orderBy: { date: "desc" },
-    take: 6000,
+    take: 4500,
     select: {
       productId: true,
       storeId: true,
@@ -135,8 +132,8 @@ export async function getCoverageMetrics({
     chainMatrix.set(chainLabel, chainBucket);
   }
 
-  const coveredProducts = products.filter((product) => (storesByProduct.get(product.id)?.size ?? 0) >= 2).length;
-  const coverageRatio = products.length > 0 ? coveredProducts / products.length : 0;
+  const coveredProducts = Array.from(storesByProduct.values()).filter((set) => set.size >= 2).length;
+  const coverageRatio = productsCount > 0 ? coveredProducts / productsCount : 0;
   const averageAgeDays = freshnessDays.length > 0 ? safeNumber(freshnessDays.reduce((a, b) => a + b, 0) / freshnessDays.length) : null;
 
   const coverageScore = Math.round(coverageRatio * 100);
@@ -149,7 +146,7 @@ export async function getCoverageMetrics({
       .map(([label, bucket]) => {
         const avgRecency =
           bucket.recencyDays.length > 0 ? safeNumber(bucket.recencyDays.reduce((a, b) => a + b, 0) / bucket.recencyDays.length) : null;
-        const bucketCoverage = products.length > 0 ? bucket.products.size / products.length : 0;
+        const bucketCoverage = productsCount > 0 ? bucket.products.size / productsCount : 0;
         return {
           label,
           stores: bucket.stores.size,
@@ -170,10 +167,10 @@ export async function getCoverageMetrics({
   };
 
   return {
-    region: normalizedRegion || null,
-    postalCode: normalizedPostalCode || null,
-    postalPrefix: normalizedPostalPrefix || null,
-    products: products.length,
+    region: region || null,
+    postalCode: postalCode || null,
+    postalPrefix: postalPrefix || null,
+    products: productsCount,
     stores: stores.length,
     coveredProducts,
     coverageRatio: safeNumber(coverageRatio, 4),
@@ -189,6 +186,31 @@ export async function getCoverageMetrics({
     chainMap,
     priorityPostals: [...postalMap].filter((bucket) => bucket.stores > 0).sort(prioritySorter).slice(0, 8),
     priorityChains: [...chainMap].filter((bucket) => bucket.stores > 0).sort(prioritySorter).slice(0, 8),
-    note: "Coverage kan filtreres med postalCode eller postalPrefix. Vi viser ogsa dekningsbildet per kjede og postnummer.",
+    note: "Coverage kan filtreres med postalCode eller postalPrefix. Vi viser også dekningsbildet per kjede og postnummer.",
   };
+}
+
+export async function getCoverageMetrics({
+  region = "",
+  postalCode = "",
+  postalPrefix = "",
+}: {
+  region?: string;
+  postalCode?: string;
+  postalPrefix?: string;
+} = {}): Promise<CoverageMetrics> {
+  const normalizedRegion = region.trim().toLowerCase();
+  const normalizedPostalCode = postalCode.trim();
+  const normalizedPostalPrefix = postalPrefix.trim();
+
+  return unstable_cache(
+    async () =>
+      computeCoverageMetrics({
+        region: normalizedRegion,
+        postalCode: normalizedPostalCode,
+        postalPrefix: normalizedPostalPrefix,
+      }),
+    ["coverage-metrics-v2", normalizedRegion || "-", normalizedPostalCode || "-", normalizedPostalPrefix || "-"],
+    { revalidate: 180 },
+  )();
 }

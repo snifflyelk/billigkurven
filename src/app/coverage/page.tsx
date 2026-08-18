@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getCoverageMetrics } from "@/lib/coverage";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function CoveragePage({
   searchParams,
@@ -102,7 +102,7 @@ export default async function CoveragePage({
       <section className="mt-8 grid gap-6 lg:grid-cols-2">
         <article className="rounded-3xl border border-rose-200 bg-rose-50/80 p-5 shadow-sm dark:border-rose-900 dark:bg-rose-950/25">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold text-rose-900 dark:text-rose-100">Kjeder vi bor prioritere na</h2>
+            <h2 className="text-xl font-semibold text-rose-900 dark:text-rose-100">Kjeder vi bør prioritere nå</h2>
             <span className="text-xs text-rose-800/80 dark:text-rose-200/80">Operativ liste</span>
           </div>
           <ul className="mt-4 space-y-3 text-sm">
@@ -144,7 +144,7 @@ export default async function CoveragePage({
       <section className="mt-8 rounded-3xl border border-amber-200 bg-amber-50/80 p-5 dark:border-amber-900 dark:bg-amber-950/25">
         <h2 className="text-xl font-semibold text-amber-900 dark:text-amber-100">Hva denne siden skal brukes til</h2>
         <ul className="mt-4 space-y-3 text-sm text-amber-900/90 dark:text-amber-100/90">
-          <li>Brukeren skal kunne sjekke om kjeden eller omradet deres faktisk er godt nok dekket til at en anbefaling er verdt a stole pa.</li>
+          <li>Brukeren skal kunne sjekke om kjeden eller omradet deres faktisk er godt nok dekket til at en anbefaling er verdt a stole på.</li>
           <li>Teamet skal bli tvunget til a vise hull i dekningen offentlig i stedet for a gjemme dem bak markedsforing.</li>
           <li>Denne siden gir et bedre grunnlag for a prioritere hvilke kjeder og postnummer som trenger mer datainnsamling.</li>
         </ul>

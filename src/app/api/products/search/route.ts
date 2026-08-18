@@ -16,6 +16,11 @@ export async function GET(request: Request) {
     const recentCutoff = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000);
     const products = await prisma.product.findMany({
       where: {
+        NOT: {
+          name: {
+            startsWith: "Vare ",
+          },
+        },
         prices: {
           some: {
             isQuarantined: false,
@@ -34,6 +39,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ products });
   } catch (error) {
-    return serverError(error, "Sok kunne ikke fullfores akkurat na.");
+    return serverError(error, "Søk kunne ikke fullføres akkurat nå.");
   }
 }

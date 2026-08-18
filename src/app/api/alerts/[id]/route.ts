@@ -1,18 +1,22 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_USER_EMAIL } from "@/lib/constants";
-import { badRequest, notFound, serverError } from "@/lib/api-response";
+import { apiError, badRequest, notFound, serverError } from "@/lib/api-response";
+import { getAuthenticatedSessionUserId } from "@/lib/user-session";
 
-async function getDefaultUserId() {
-  const existing = await prisma.user.findUnique({ where: { email: DEFAULT_USER_EMAIL } });
-  if (existing) return existing.id;
-  const created = await prisma.user.create({ data: { email: DEFAULT_USER_EMAIL } });
-  return created.id;
+async function requireAlertUserId() {
+  return getAuthenticatedSessionUserId();
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
-    const userId = await getDefaultUserId();
+    const userId = await requireAlertUserId();
+    if (!userId) {
+      return apiError(401, {
+        error: "Innlogging kreves.",
+        hint: "Logg inn for a oppdatere personlige varsler.",
+        code: "UNAUTHORIZED",
+      });
+    }
     const body = await request.json();
 
     const existing = await prisma.priceAlert.findUnique({ where: { id: params.id } });
@@ -72,7 +76,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
 export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
   try {
-    const userId = await getDefaultUserId();
+    const userId = await requireAlertUserId();
+    if (!userId) {
+      return apiError(401, {
+        error: "Innlogging kreves.",
+        hint: "Logg inn for a slette personlige varsler.",
+        code: "UNAUTHORIZED",
+      });
+    }
     const existing = await prisma.priceAlert.findUnique({ where: { id: params.id } });
 
     if (!existing || existing.userId !== userId) {

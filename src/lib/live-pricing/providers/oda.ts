@@ -3,6 +3,7 @@ import { extractImageFromHtml, isLikelyProductImageUrl } from "./media";
 import type { LivePriceCandidate, LivePriceProvider } from "./types";
 
 const pricePattern = /(\d{1,3}(?:[.\s]\d{3})*,\d{2})(?:\s*kr)(?:\s*(?:\/|\u2009\/)?\s*([a-zæøå]+))?/gi;
+const ODA_SEARCH_PAGES = Math.max(Number(process.env.LIVE_PRICING_ODA_SEARCH_PAGES ?? 80), 1);
 
 function extractCards(html: string) {
   const matches: RegExpExecArray[] = [];
@@ -69,16 +70,45 @@ export const odaProvider: LivePriceProvider = {
   chain: "Oda",
   location: "Nettbutikk",
   async search(query: string) {
-    const url = `https://oda.com/no/search/products/?q=${encodeURIComponent(query)}&site=no&page=1`;
-    const response = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" } });
+    const deduped = new Map<string, LivePriceCandidate>();
+    let consecutivePagesWithoutGrowth = 0;
 
-    if (!response.ok) {
-      return [];
+    for (let page = 1; page <= ODA_SEARCH_PAGES; page += 1) {
+      const url = `https://oda.com/no/search/products/?q=${encodeURIComponent(query)}&site=no&page=${page}`;
+      const response = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" } });
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const html = await response.text();
+      const pageCandidates = extractCards(html)
+        .map(parseCandidate)
+        .filter((candidate): candidate is LivePriceCandidate => Boolean(candidate));
+
+      if (pageCandidates.length === 0) {
+        break;
+      }
+
+      const beforeCount = deduped.size;
+
+      for (const candidate of pageCandidates) {
+        const key = `${candidate.url}|${candidate.title.toLowerCase()}`;
+        if (!deduped.has(key)) {
+          deduped.set(key, candidate);
+        }
+      }
+
+      if (deduped.size === beforeCount) {
+        consecutivePagesWithoutGrowth += 1;
+        if (consecutivePagesWithoutGrowth >= 2) {
+          break;
+        }
+      } else {
+        consecutivePagesWithoutGrowth = 0;
+      }
     }
 
-    const html = await response.text();
-    return extractCards(html)
-      .map(parseCandidate)
-      .filter((candidate): candidate is LivePriceCandidate => Boolean(candidate));
+    return Array.from(deduped.values());
   },
 };

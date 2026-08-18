@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { Prisma } from "@prisma/client";
 
-import { AllProductsCatalog, type CatalogProduct } from "@/components/all-products-catalog";
+import { AllProductsCatalog, type CatalogProduct, type CatalogSortOption } from "@/components/all-products-catalog";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
+const PAGE_SIZE = 25;
 
 function formatPackageLabel(quantity: number | null, unit: "G" | "ML" | "STK" | null) {
   if (!quantity || !unit) return "Ukjent pakning";
@@ -19,15 +21,75 @@ function formatPackageLabel(quantity: number | null, unit: "G" | "ML" | "STK" | 
   return `${quantity} stk`;
 }
 
-export default async function AllProductsPage() {
-  const products = await prisma.product.findMany({
-    where: {
-      prices: {
-        some: {
-          isQuarantined: false,
-        },
+export default async function AllProductsPage({
+  searchParams,
+}: {
+  searchParams: {
+    page?: string;
+    q?: string;
+    category?: string;
+    brand?: string;
+    sort?: string;
+  };
+}) {
+  const pageCandidate = Number(searchParams.page ?? "1");
+  const currentPage = Number.isFinite(pageCandidate) && pageCandidate > 0 ? Math.floor(pageCandidate) : 1;
+  const query = (searchParams.q ?? "").trim();
+  const category = (searchParams.category ?? "all").trim() || "all";
+  const brand = (searchParams.brand ?? "all").trim() || "all";
+  const sortBy: CatalogSortOption = searchParams.sort === "name" ? "name" : "updated";
+
+  const baseWhere: Prisma.ProductWhereInput = {
+    NOT: {
+      name: {
+        startsWith: "Vare ",
       },
     },
+    prices: {
+      some: {
+        isQuarantined: false,
+      },
+    },
+  };
+
+  const filteredWhere: Prisma.ProductWhereInput = {
+    ...baseWhere,
+    ...(query
+      ? {
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { brand: { contains: query, mode: "insensitive" } },
+            { category: { contains: query, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+    ...(category !== "all" ? { category } : {}),
+    ...(brand !== "all" ? { brand } : {}),
+  };
+
+  const [totalAll, totalFiltered, categoryRows, brandRows] = await Promise.all([
+    prisma.product.count({ where: baseWhere }),
+    prisma.product.count({ where: filteredWhere }),
+    prisma.product.findMany({
+      where: baseWhere,
+      distinct: ["category"],
+      select: { category: true },
+      orderBy: { category: "asc" },
+    }),
+    prisma.product.findMany({
+      where: baseWhere,
+      distinct: ["brand"],
+      select: { brand: true },
+      orderBy: { brand: "asc" },
+    }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const skip = (safeCurrentPage - 1) * PAGE_SIZE;
+
+  const products = await prisma.product.findMany({
+    where: filteredWhere,
     select: {
       id: true,
       name: true,
@@ -35,13 +97,14 @@ export default async function AllProductsPage() {
       category: true,
       packageQuantity: true,
       packageUnit: true,
+      updatedAt: true,
     },
-    orderBy: {
-      name: "asc",
-    },
+    orderBy: sortBy === "name" ? { name: "asc" } : { updatedAt: "desc" },
+    skip,
+    take: PAGE_SIZE,
   });
 
-  if (products.length === 0) {
+  if (totalAll === 0) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-10">
         <h1 className="text-3xl font-bold tracking-tight">Alle varer</h1>
@@ -127,6 +190,9 @@ export default async function AllProductsPage() {
     })
     .filter((product): product is CatalogProduct => Boolean(product));
 
+  const categories = categoryRows.map((item) => item.category).filter((item): item is string => Boolean(item));
+  const brands = brandRows.map((item) => item.brand).filter((item): item is string => Boolean(item));
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 pb-24 md:pb-10">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -141,7 +207,17 @@ export default async function AllProductsPage() {
         </Link>
       </div>
 
-      <AllProductsCatalog products={catalogProducts} />
+      <AllProductsCatalog
+        products={catalogProducts}
+        categories={categories}
+        brands={brands}
+        filters={{ query, category, brand, sortBy }}
+        currentPage={safeCurrentPage}
+        totalPages={totalPages}
+        totalFiltered={totalFiltered}
+        totalAll={totalAll}
+        pageSize={PAGE_SIZE}
+      />
     </main>
   );
 }

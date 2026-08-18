@@ -1,8 +1,8 @@
 import Link from "next/link";
 
-import { DEFAULT_USER_EMAIL } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 import { getWeeklySavingsReport } from "@/lib/savings-report";
+import { requireAuthenticatedSessionUserId } from "@/lib/user-session";
 import { formatNok } from "@/lib/utils";
 import { WeeklyReportDispatch } from "@/components/weekly-report-dispatch";
 
@@ -13,7 +13,8 @@ export default async function WeeklySavingsReportPage({
 }: {
   searchParams: { chain?: string | string[] };
 }) {
-  const user = await prisma.user.findUnique({ where: { email: DEFAULT_USER_EMAIL }, select: { id: true } });
+  const userId = await requireAuthenticatedSessionUserId("/savings/weekly-report");
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
 
   if (!user) {
     return (
@@ -26,6 +27,10 @@ export default async function WeeklySavingsReportPage({
 
   const chainParam = Array.isArray(searchParams.chain) ? searchParams.chain[0] : searchParams.chain;
   const report = await getWeeklySavingsReport(user.id, { chain: chainParam ?? null });
+  const shareText = encodeURIComponent(
+    `Billigkurven ukesrapport: ${report.thisWeekSavings.toFixed(0)} kr spart denne uken. Projeksjon neste uke: ${report.projectedNextWeekSavings.toFixed(0)} kr.`,
+  );
+  const shareUrl = encodeURIComponent("https://billigkurven.vercel.app/savings/weekly-report");
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 pb-16">
@@ -67,8 +72,8 @@ export default async function WeeklySavingsReportPage({
       </section>
 
       <section className="mt-6 rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4 dark:border-cyan-900 dark:bg-cyan-950/20">
-        <p className="text-sm font-medium text-cyan-900 dark:text-cyan-100">Filter pa butikkjede</p>
-        <p className="mt-1 text-xs text-cyan-800/90 dark:text-cyan-200/90">Bruk filteret for a se projisert sparepotensial med fokus pa en valgt kjede.</p>
+        <p className="text-sm font-medium text-cyan-900 dark:text-cyan-100">Filter på butikkjede</p>
+        <p className="mt-1 text-xs text-cyan-800/90 dark:text-cyan-200/90">Bruk filteret for a se projisert sparepotensial med fokus på en valgt kjede.</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
             href="/savings/weekly-report"
@@ -93,6 +98,35 @@ export default async function WeeklySavingsReportPage({
               {chain}
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+        <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">Retention-loop for neste uke</p>
+        <p className="mt-1 text-xs text-emerald-800/90 dark:text-emerald-200/90">
+          Planlegg fast utsendelse mandag morgen, aktiver push/epost og del rapporten med husstanden for bedre oppfolging.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a
+            href={`mailto:?subject=${encodeURIComponent("Billigkurven ukesrapport")}&body=${shareText}%0A%0A${shareUrl}`}
+            className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"
+          >
+            Del på epost
+          </a>
+          <a
+            href={`https://wa.me/?text=${shareText}%20${shareUrl}`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"
+          >
+            Del på melding
+          </a>
+          <a
+            href={`mailto:?subject=${encodeURIComponent("Invitasjon til delt spareplan")}&body=${encodeURIComponent("Bli med i Billigkurven og følg ukesplanen sammen: https://billigkurven.no/login?next=/account")}`}
+            className="rounded-xl border border-cyan-300 bg-white px-3 py-2 text-xs font-semibold text-cyan-800 hover:bg-cyan-100 dark:border-cyan-800 dark:bg-cyan-950/30 dark:text-cyan-200"
+          >
+            Inviter partner
+          </a>
         </div>
       </section>
 
@@ -131,7 +165,7 @@ export default async function WeeklySavingsReportPage({
       <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-xl font-semibold">Siste ukers utvikling</h2>
         {report.buckets.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Ingen ukedata ennå. Last opp og fa godkjent flere kvitteringer.</p>
+          <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Ingen ukedata ennå. Last opp og få godkjent flere kvitteringer.</p>
         ) : (
           <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
             <table className="min-w-[52rem] w-full text-left text-sm">

@@ -28,6 +28,11 @@ model Product {
   prices             Price[]
   shoppingListItems  ShoppingListItem[]
   priceAlerts        PriceAlert[]
+
+  @@index([name])
+  @@index([brand])
+  @@index([category])
+  @@index([updatedAt])
 }
 
 model Store {
@@ -36,10 +41,13 @@ model Store {
   chain    String
   location String
   postalCode String?
+  latitude Float?
+  longitude Float?
 
   prices Price[]
 
   @@index([postalCode])
+  @@index([latitude, longitude])
 }
 
 model Price {
@@ -65,17 +73,42 @@ model Price {
   store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([productId, storeId, date])
+  @@index([isQuarantined, date])
+  @@index([storeId, isQuarantined, date])
+  @@index([productId, isQuarantined, date])
+  @@index([isQuarantined, date, storeId])
 }
 
 model User {
   id        String          @id @default(cuid())
   email     String          @unique
+  passwordHash String?
   createdAt DateTime        @default(now())
 
+  sessions     UserSession[]
   preference   UserPreference?
   shoppingLists ShoppingList[]
   receipts     ReceiptSubmission[]
   priceAlerts  PriceAlert[]
+
+  @@index([createdAt])
+}
+
+model UserSession {
+  id          String   @id @default(cuid())
+  userId      String
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  rotatedAt   DateTime?
+  revokedAt   DateTime?
+  userAgent   String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@index([revokedAt, expiresAt])
 }
 
 model PriceAlert {
@@ -95,11 +128,17 @@ model PriceAlert {
 
   @@unique([userId, productId])
   @@index([isActive, createdAt])
+  @@index([userId, isActive])
 }
 
 model UserPreference {
   id               String @id @default(cuid())
   userId           String @unique
+  postalCode       String?
+  postalPrefix     String?
+  travelMode       TravelMode @default(DRIVE)
+  maxTravelMinutes Int?
+  maxTravelKm      Float?
   primaryStore     String
   priceSensitivity Int
   useMembershipPricing Boolean @default(true)
@@ -134,6 +173,8 @@ model ShoppingList {
 
   user  User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   items ShoppingListItem[]
+
+  @@index([userId, createdAt])
 }
 
 model ShoppingListItem {
@@ -146,6 +187,7 @@ model ShoppingListItem {
   product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([shoppingListId, productId])
+  @@index([productId])
 }
 
 model ReceiptSubmission {
@@ -172,6 +214,9 @@ model ReceiptSubmission {
   reviewedBy    String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, reviewedAt])
+  @@index([userId, status, reviewedAt])
 }
 
 enum ReceiptStatus {
@@ -196,4 +241,9 @@ enum CoveragePriorityStatus {
   IN_PROGRESS
   BLOCKED
   RESOLVED
+}
+
+enum TravelMode {
+  DRIVE
+  WALK
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 
 export type TransparencyMetrics = {
   trackedProducts: number;
@@ -16,7 +17,8 @@ export type TransparencyMetrics = {
   quarantineRatio: number;
 };
 
-export async function getTransparencyMetrics(): Promise<TransparencyMetrics> {
+const getTransparencyMetricsCached = unstable_cache(
+  async (): Promise<TransparencyMetrics> => {
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const since72h = new Date(Date.now() - 72 * 60 * 60 * 1000);
 
@@ -30,7 +32,7 @@ export async function getTransparencyMetrics(): Promise<TransparencyMetrics> {
       prisma.receiptSubmission.count({ where: { status: "REVIEWED" } }).catch(() => 0),
       prisma.price.count({ where: { isQuarantined: true } }).catch(() => 0),
       prisma.price.findFirst({ where: { isQuarantined: false }, orderBy: { date: "desc" }, select: { date: true } }).catch(() => null),
-      prisma.price.findMany({ where: { isQuarantined: false }, distinct: ["source"], select: { source: true } }).catch(() => []),
+      prisma.price.findMany({ where: { isQuarantined: false }, distinct: ["source"], select: { source: true }, take: 80 }).catch(() => []),
     ]);
 
   const freshestObservationHours = latestPrice
@@ -54,4 +56,11 @@ export async function getTransparencyMetrics(): Promise<TransparencyMetrics> {
     staleRatio72h: nonQuarantinedPrices > 0 ? Math.round((stalePrices72h / nonQuarantinedPrices) * 100) : 0,
     quarantineRatio: totalPrices > 0 ? Math.round((quarantinedRows / totalPrices) * 100) : 0,
   };
+  },
+  ["transparency-metrics-v1"],
+  { revalidate: 120 },
+);
+
+export async function getTransparencyMetrics(): Promise<TransparencyMetrics> {
+  return getTransparencyMetricsCached();
 }

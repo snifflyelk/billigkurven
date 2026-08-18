@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { SavingsHistoryChart } from "@/components/savings-history-chart";
+import { ShareSavingsCard } from "@/components/share-savings-card";
 import { compareShoppingList } from "@/lib/compare";
-import { DEFAULT_USER_EMAIL } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
+import { requireAuthenticatedSessionUserId } from "@/lib/user-session";
 import { formatNok } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function SavingsPage() {
+  const currentUserId = await requireAuthenticatedSessionUserId("/savings");
   const user = await prisma.user.findUnique({
-    where: { email: DEFAULT_USER_EMAIL },
+    where: { id: currentUserId },
     include: {
       preference: true,
       receipts: {
@@ -48,7 +50,7 @@ export default async function SavingsPage() {
   const confidenceBreakdown = user.receipts.reduce(
     (accumulator, receipt) => {
       const tone = String(receipt.savingsConfidence ?? "ukjent").toLowerCase();
-      if (tone.includes("hoy")) accumulator.high += 1;
+      if (tone.includes("høy")) accumulator.high += 1;
       else if (tone.includes("medium")) accumulator.medium += 1;
       else accumulator.low += 1;
       return accumulator;
@@ -73,7 +75,7 @@ export default async function SavingsPage() {
   const monthVerifiedSavings = Number(
     monthReceipts.reduce((sum, receipt) => sum + Number(receipt.verifiedSavings ?? 0), 0).toFixed(2),
   );
-  const monthHighConfidence = monthReceipts.filter((receipt) => String(receipt.savingsConfidence ?? "").toLowerCase().includes("hoy")).length;
+  const monthHighConfidence = monthReceipts.filter((receipt) => String(receipt.savingsConfidence ?? "").toLowerCase().includes("høy")).length;
   const monthConfidenceRatio =
     monthReceipts.length > 0 ? Math.round((monthHighConfidence / monthReceipts.length) * 100) : null;
   const receiptSeries = user.receipts
@@ -122,6 +124,16 @@ export default async function SavingsPage() {
       });
       return accumulator;
     }, []);
+
+  const weeklyParticipation = Math.min(100, Math.round((weeklyChartData.length / 8) * 100));
+  const weeklyHabitTone =
+    weeklyParticipation >= 75
+      ? "Sterk vane"
+      : weeklyParticipation >= 45
+        ? "Bygger vane"
+        : "Ustabil vane";
+  const monthLabel = monthStart.toLocaleDateString("nb-NO", { month: "long", year: "numeric" });
+  const confidenceShareLabel = monthConfidenceRatio !== null ? `${monthConfidenceRatio}%` : "ikke nok data";
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 pb-16">
@@ -182,9 +194,33 @@ export default async function SavingsPage() {
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs uppercase tracking-wide text-slate-500">Confidence-fordeling</p>
-          <p className="mt-1 text-sm font-medium">Hoy: {confidenceBreakdown.high} · Medium: {confidenceBreakdown.medium} · Lav/ukjent: {confidenceBreakdown.low}</p>
+          <p className="mt-1 text-sm font-medium">Høy: {confidenceBreakdown.high} · Medium: {confidenceBreakdown.medium} · Lav/ukjent: {confidenceBreakdown.low}</p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Brukes for a vise hvor robust verifikasjonen faktisk er.</p>
         </article>
+      </section>
+
+      <section className="mt-4 grid gap-4 md:grid-cols-2">
+        <article className="rounded-2xl border border-orange-200 bg-orange-50/80 p-4 dark:border-orange-900 dark:bg-orange-950/25">
+          <p className="text-xs uppercase tracking-wide text-orange-700 dark:text-orange-300">Ukentlig vane-loop</p>
+          <p className="mt-1 text-2xl font-semibold text-orange-900 dark:text-orange-100">{weeklyParticipation}%</p>
+          <p className="mt-1 text-sm text-orange-900/90 dark:text-orange-100/90">
+            {weeklyHabitTone}. Målet er en fast rytme: varsel til handleplan til kvittering til dokumentert sparing.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link href="/alerts" className="rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-400">
+              Se ukesignal
+            </Link>
+            <Link href="/compare" className="rounded-lg border border-orange-300 px-3 py-2 text-xs font-semibold text-orange-900 hover:bg-orange-100 dark:border-orange-800 dark:text-orange-200 dark:hover:bg-orange-900/40">
+              Oppdater handleplan
+            </Link>
+          </div>
+        </article>
+
+        <ShareSavingsCard
+          monthLabel={monthLabel}
+          verifiedSavingsLabel={formatNok(monthVerifiedSavings)}
+          confidenceRatioLabel={confidenceShareLabel}
+        />
       </section>
 
       <section className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -254,7 +290,7 @@ export default async function SavingsPage() {
             <p className="mt-1 text-lg font-semibold text-emerald-900 dark:text-emerald-100">{monthReceipts.length}</p>
           </div>
           <div className="rounded-2xl border border-emerald-200 bg-white/80 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/25">
-            <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Hoy confidence-andel</p>
+            <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Høy confidence-andel</p>
             <p className="mt-1 text-lg font-semibold text-emerald-900 dark:text-emerald-100">{monthConfidenceRatio !== null ? `${monthConfidenceRatio}%` : "Ikke nok data"}</p>
           </div>
           <div className="rounded-2xl border border-emerald-200 bg-white/80 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/25">
@@ -264,7 +300,7 @@ export default async function SavingsPage() {
         </div>
 
         <p className="mt-4 rounded-2xl border border-emerald-200 bg-white/80 p-3 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-100">
-          Sparebeviset bygger pa faktisk handletotal mot billigste estimerte alternativ fra samme varekurv. Jo flere godkjente kvitteringer du laster opp, desto mer robust blir verifikasjonen.
+          Sparebeviset bygger på faktisk handletotal mot billigste estimerte alternativ fra samme varekurv. Jo flere godkjente kvitteringer du laster opp, desto mer robust blir verifikasjonen.
         </p>
       </section>
 

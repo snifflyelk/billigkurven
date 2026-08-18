@@ -16,6 +16,8 @@ type JsonObject = Record<string, unknown>;
 type NgDataHit = Record<string, unknown>;
 
 const resolvedGlnByProvider = new Map<string, string>();
+const NG_SEARCH_PAGES = Math.max(Number(process.env.LIVE_PRICING_NG_SEARCH_PAGES ?? 80), 1);
+const NG_SEARCH_PAGE_SIZE = Math.max(Number(process.env.LIVE_PRICING_NG_PAGE_SIZE ?? 250), 24);
 
 function extractCards(html: string, baseUrl: string) {
   const matches: RegExpExecArray[] = [];
@@ -317,16 +319,18 @@ function extractPlatformRestCandidates(payload: unknown, baseUrl: string) {
   return candidates;
 }
 
-async function searchViaNgDataApi(input: {
+async function searchViaNgDataApiPage(input: {
   chainId: string;
   query: string;
   gln: string;
+  page: number;
+  pageSize: number;
 }) {
   const url = new URL(`https://api.ngdata.no/sylinder/search/productsearch/v1/search/${encodeURIComponent(input.gln)}/products`);
   url.searchParams.set("search", input.query);
   url.searchParams.set("chainId", input.chainId);
-  url.searchParams.set("pageSize", "24");
-  url.searchParams.set("page", "1");
+  url.searchParams.set("pageSize", String(input.pageSize));
+  url.searchParams.set("page", String(input.page));
   url.searchParams.set("showNotForSale", "true");
   url.searchParams.set("popularity", "true");
 
@@ -351,15 +355,17 @@ async function searchViaNgDataApi(input: {
   return payload;
 }
 
-async function searchViaPlatformRestApi(input: {
+async function searchViaPlatformRestApiPage(input: {
   chainId: string;
   query: string;
   gln: string;
+  page: number;
+  pageSize: number;
 }) {
   const url = new URL(`https://platform-rest-prod.ngdata.no/api/products/${encodeURIComponent(input.chainId)}/${encodeURIComponent(input.gln)}`);
   url.searchParams.set("search", input.query);
-  url.searchParams.set("page", "1");
-  url.searchParams.set("page_size", "24");
+  url.searchParams.set("page", String(input.page));
+  url.searchParams.set("page_size", String(input.pageSize));
   url.searchParams.set("full_response", "true");
   url.searchParams.set("fieldset", "maximal");
   url.searchParams.set("showNotForSale", "true");
@@ -383,6 +389,112 @@ async function searchViaPlatformRestApi(input: {
   }
 
   return payload;
+}
+
+async function searchViaNgDataApi(input: {
+  chainId: string;
+  query: string;
+  gln: string;
+  baseUrl: string;
+}) {
+  const deduped = new Map<string, LivePriceCandidate>();
+  let consecutivePagesWithoutGrowth = 0;
+
+  for (let page = 1; page <= NG_SEARCH_PAGES; page += 1) {
+    const payload = await searchViaNgDataApiPage({
+      chainId: input.chainId,
+      query: input.query,
+      gln: input.gln,
+      page,
+      pageSize: NG_SEARCH_PAGE_SIZE,
+    }).catch(() => null);
+
+    if (!payload) {
+      continue;
+    }
+
+    const candidates = extractNgDataCandidates(payload, input.baseUrl);
+    if (candidates.length === 0) {
+      break;
+    }
+
+    const beforeCount = deduped.size;
+
+    for (const candidate of candidates) {
+      const key = `${candidate.url}|${candidate.title.toLowerCase()}`;
+      if (!deduped.has(key)) {
+        deduped.set(key, candidate);
+      }
+    }
+
+    if (deduped.size === beforeCount) {
+      consecutivePagesWithoutGrowth += 1;
+      if (consecutivePagesWithoutGrowth >= 2) {
+        break;
+      }
+    } else {
+      consecutivePagesWithoutGrowth = 0;
+    }
+
+    if (candidates.length < NG_SEARCH_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return Array.from(deduped.values());
+}
+
+async function searchViaPlatformRestApi(input: {
+  chainId: string;
+  query: string;
+  gln: string;
+  baseUrl: string;
+}) {
+  const deduped = new Map<string, LivePriceCandidate>();
+  let consecutivePagesWithoutGrowth = 0;
+
+  for (let page = 1; page <= NG_SEARCH_PAGES; page += 1) {
+    const payload = await searchViaPlatformRestApiPage({
+      chainId: input.chainId,
+      query: input.query,
+      gln: input.gln,
+      page,
+      pageSize: NG_SEARCH_PAGE_SIZE,
+    }).catch(() => null);
+
+    if (!payload) {
+      continue;
+    }
+
+    const candidates = extractPlatformRestCandidates(payload, input.baseUrl);
+    if (candidates.length === 0) {
+      break;
+    }
+
+    const beforeCount = deduped.size;
+
+    for (const candidate of candidates) {
+      const key = `${candidate.url}|${candidate.title.toLowerCase()}`;
+      if (!deduped.has(key)) {
+        deduped.set(key, candidate);
+      }
+    }
+
+    if (deduped.size === beforeCount) {
+      consecutivePagesWithoutGrowth += 1;
+      if (consecutivePagesWithoutGrowth >= 2) {
+        break;
+      }
+    } else {
+      consecutivePagesWithoutGrowth = 0;
+    }
+
+    if (candidates.length < NG_SEARCH_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return Array.from(deduped.values());
 }
 
 function parseGlnCandidates(input: { primary?: string; candidates?: string; fallback: string }) {
@@ -415,10 +527,12 @@ async function resolveWorkingGln(input: {
   });
 
   for (const gln of candidateList) {
-    const payload = await searchViaNgDataApi({
+    const payload = await searchViaNgDataApiPage({
       chainId: input.chainId,
       query: "tine melk",
       gln,
+      page: 1,
+      pageSize: 24,
     }).catch(() => null);
 
     if (!payload) continue;
@@ -466,30 +580,26 @@ export function createNorgesgruppenProvider(config: {
       });
 
       // Prefer backend JSON endpoint when available; fall back to HTML parsing.
-      const apiPayload = await searchViaNgDataApi({
+      const apiCandidates = await searchViaNgDataApi({
         chainId: config.chainId,
         query,
         gln,
-      }).catch(() => null);
+        baseUrl,
+      }).catch(() => []);
 
-      if (apiPayload) {
-        const apiCandidates = extractNgDataCandidates(apiPayload, baseUrl);
-        if (apiCandidates.length > 0) {
-          return apiCandidates;
-        }
+      if (apiCandidates.length > 0) {
+        return apiCandidates;
       }
 
-      const platformPayload = await searchViaPlatformRestApi({
+      const platformCandidates = await searchViaPlatformRestApi({
         chainId: config.chainId,
         query,
         gln,
-      }).catch(() => null);
+        baseUrl,
+      }).catch(() => []);
 
-      if (platformPayload) {
-        const platformCandidates = extractPlatformRestCandidates(platformPayload, baseUrl);
-        if (platformCandidates.length > 0) {
-          return platformCandidates;
-        }
+      if (platformCandidates.length > 0) {
+        return platformCandidates;
       }
 
       const url = `${baseUrl}/sok?q=${encodeURIComponent(query)}`;

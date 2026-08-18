@@ -6,6 +6,8 @@ import { Footer } from "@/components/footer";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ToastProvider } from "@/components/providers/toast-provider";
+import { GlobalMobileCta } from "@/components/global-mobile-cta";
+import { Analytics } from "@vercel/analytics/next";
 
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
 const spaceGrotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space" });
@@ -29,8 +31,10 @@ export default function RootLayout({
               <div className="min-h-screen bg-app text-slate-900 dark:text-slate-100">
                 <Navbar />
                 {children}
+                <GlobalMobileCta />
                 <Footer />
               </div>
+              <Analytics />
             </ToastProvider>
           </QueryProvider>
         </ThemeProvider>

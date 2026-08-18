@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatNok } from "@/lib/utils";
 
+export const revalidate = 300;
 export const dynamic = "force-dynamic";
 
 type CandidateProduct = {
@@ -110,6 +111,10 @@ function evaluateBasket(id: string, name: string, products: CandidateProduct[]):
 export default async function BenchmarkPage() {
   const productsRaw = await prisma.product.findMany({
     where: {
+      NOT: [
+        { name: { startsWith: "Vare " } },
+        { name: { startsWith: "vare " } },
+      ],
       prices: {
         some: { isQuarantined: false },
       },
@@ -173,7 +178,7 @@ export default async function BenchmarkPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Markedbenchmark</h1>
           <p className="mt-2 max-w-3xl text-slate-600 dark:text-slate-300">
-            Standardkurver som synliggjor prisforskjeller mellom butikker og kjeder akkurat na.
+            Standardkurver som synliggjor prisforskjeller mellom butikker og kjeder akkurat nå.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

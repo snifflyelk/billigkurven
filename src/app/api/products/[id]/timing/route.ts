@@ -91,10 +91,10 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       recommendation,
       bestBuyWindow:
         recommendation === "kjop-na"
-          ? "Prisene er fallende. Vindu for kjop ser gunstig ut na."
+          ? "Prisene er fallende. Vindu for kjøp ser gunstig ut nå."
           : recommendation === "vent"
-            ? "Prisene er stigende eller ustabile. Vent pa bedre tidspunkt hvis mulig."
-            : "Prisbevegelsen er svak. Kjopevindu vurderes som nøytralt.",
+            ? "Prisene er stigende eller ustabile. Vent på bedre tidspunkt hvis mulig."
+            : "Prisbevegelsen er svak. Kjøpevindu vurderes som nøytralt.",
     });
   } catch (error) {
     return serverError(error, "Kunne ikke beregne timing for produktet.");

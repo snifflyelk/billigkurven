@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { getChainQualitySnapshot, getReceiptTruthSummary } from "@/lib/quality-monitor";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 function daysSince(date: Date) {
   const diffMs = Date.now() - date.getTime();
@@ -44,8 +46,14 @@ export default async function DataQualityPage() {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
 
-  const [products, stores, prices, receipts] = await Promise.all([
+  const [products, stores, prices, receipts, chainQuality, receiptTruth] = await Promise.all([
     prisma.product.findMany({
+      where: {
+        NOT: [
+          { name: { startsWith: "Vare " } },
+          { name: { startsWith: "vare " } },
+        ],
+      },
       include: {
         prices: {
           include: { store: true },
@@ -56,6 +64,8 @@ export default async function DataQualityPage() {
     prisma.store.count(),
     prisma.price.findMany({ orderBy: { date: "desc" }, take: 2000 }),
     prisma.receiptSubmission.findMany({ orderBy: { createdAt: "desc" }, take: 500 }),
+    getChainQualitySnapshot(7),
+    getReceiptTruthSummary(7),
   ]);
 
   const latestByProductStore = new Map<string, Date>();
@@ -88,6 +98,7 @@ export default async function DataQualityPage() {
   }, {});
 
   const latestSources = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
+  const latestObservation = prices[0]?.date ?? null;
 
   const [pricesLast7, pricesPrev7, pricesLast30, pricesPrev30] = await Promise.all([
     prisma.price.findMany({ where: { date: { gte: sevenDaysAgo, lte: now } }, select: { productId: true, storeId: true, date: true } }),
@@ -133,7 +144,75 @@ export default async function DataQualityPage() {
           <h2 className="text-3xl font-bold">{trustScore}/100</h2>
           <span className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold dark:border-slate-700 dark:bg-slate-900">{trustBand}</span>
         </div>
-        <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">Bruk denne scoren for a avgjore hvor aggressiv anbefalingsmotoren skal være.</p>
+        <p className="mt-2 text-sm text-slate-700 dark:text-slate-200">Bruk denne scoren for å avgjøre hvor aggressiv anbefalingsmotoren skal være.</p>
+        <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+          Sist oppdatert observasjon: {latestObservation ? latestObservation.toLocaleString("nb-NO") : "Ingen observasjoner"}
+        </p>
+      </section>
+
+      <section className="mt-4 grid gap-4 md:grid-cols-3 fade-rise-delayed">
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Norsk standard</p>
+          <p className="mt-1 font-semibold">Lokal dekning per postområde</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Vi vurderer datakvalitet på lokalt nivå, ikke bare nasjonale gjennomsnitt.</p>
+        </article>
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Internasjonal standard</p>
+          <p className="mt-1 font-semibold">Sporbarhet og quality-gating</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Alle anbefalinger får confidence og tydelig kvalitetsterskel før hard anbefaling.</p>
+        </article>
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Brukerverdi</p>
+          <p className="mt-1 font-semibold">Fasit med kvitteringsbevis</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Verifisert sparing viser faktisk effekt, ikke bare modellert potensial.</p>
+        </article>
+      </section>
+
+      <section className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-lg font-semibold">Kjedevis kvalitetsscore (7 dager)</h2>
+          {chainQuality.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">Ingen kjededata tilgjengelig ennå.</p>
+          ) : (
+            <ul className="mt-3 space-y-2 text-sm">
+              {chainQuality.map((chain) => (
+                <li key={chain.chain} className="rounded-xl border border-slate-200 px-3 py-3 dark:border-slate-800">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-slate-900 dark:text-slate-100">{chain.chain}</p>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${chain.status === "sterk" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : chain.status === "moderat" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"}`}>
+                      {chain.qualityScore}/100 · {chain.status}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                    Rader: {chain.rows} · Produkter: {chain.trackedProducts} · Butikker: {chain.stores}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                    Match-aksept: {chain.acceptanceRate}% · Karantene: {chain.quarantineRate}% · Prisalder: {chain.avgPriceAgeDays !== null ? `${chain.avgPriceAgeDays} d` : "-"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
+
+        <article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-lg font-semibold">Kvitteringsfasit (7 dager)</h2>
+          <p className={`mt-3 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${receiptTruth.overallPass ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200"}`}>
+            {receiptTruth.overallPass ? "PASS" : "FAIL"}
+          </p>
+          <ul className="mt-3 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+            <li>Sample: {receiptTruth.sampleCount} (brukbar for prisfeil: {receiptTruth.usableSampleCount})</li>
+            <li>Gj.snitt match-rate: {receiptTruth.averageMatchRate}%</li>
+            <li>Høy confidence-rate: {receiptTruth.highConfidenceRate}%</li>
+            <li>Median absolutt prisfeil: {receiptTruth.medianAbsErrorPct !== null ? `${receiptTruth.medianAbsErrorPct}%` : "-"}</li>
+          </ul>
+          <ul className="mt-3 space-y-1 text-xs text-slate-500 dark:text-slate-400">
+            <li>Minst 20 kvitteringer: {receiptTruth.checks.minimumSample ? "OK" : "Ikke OK"}</li>
+            <li>Match-rate &gt;= 75%: {receiptTruth.checks.matchRate ? "OK" : "Ikke OK"}</li>
+            <li>Høy confidence &gt;= 60%: {receiptTruth.checks.highConfidence ? "OK" : "Ikke OK"}</li>
+            <li>Median prisfeil &lt;= 5%: {receiptTruth.checks.priceError ? "OK" : "Ikke OK"}</li>
+          </ul>
+        </article>
       </section>
 
       <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 fade-rise-delayed">

@@ -12,6 +12,9 @@ export type LivePriceProvider = {
   storeName: string;
   chain: string;
   location: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
   minScore?: number;
   search(query: string): Promise<LivePriceCandidate[]>;
 };

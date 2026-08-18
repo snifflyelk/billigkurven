@@ -3,27 +3,28 @@ import { BudgetPlanner } from "@/components/budget-planner";
 import { ShoppingListEditor } from "@/components/shopping-list-editor";
 import { TransparencySnapshot } from "@/components/transparency-snapshot";
 import { compareShoppingList } from "@/lib/compare";
-import { DEFAULT_USER_EMAIL } from "@/lib/constants";
 import { getCoverageMetrics } from "@/lib/coverage";
 import { scoreSubstitutionCandidate } from "@/lib/product-matching";
 import { prisma } from "@/lib/prisma";
 import { getTransparencyMetrics } from "@/lib/transparency";
+import { requireAuthenticatedSessionUserId } from "@/lib/user-session";
 import { formatNok } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function ShoppingListPage() {
-  const user = await prisma.user.findUnique({ where: { email: DEFAULT_USER_EMAIL }, include: { preference: true } });
+  const currentUserId = await requireAuthenticatedSessionUserId("/shopping-list");
+  const user = await prisma.user.findUnique({ where: { id: currentUserId }, include: { preference: true } });
 
   if (!user) {
     return (
       <main className="mx-auto max-w-4xl px-4 py-10">
         <h1 className="text-3xl font-bold">Handleliste</h1>
         <p className="mt-4 text-slate-600 dark:text-slate-300">
-          Ingen bruker funnet. Kjor onboarding for a opprette bruker og handleliste.
+          Ingen bruker funnet. Logg inn for å opprette preferanser og handleliste.
         </p>
-        <Link href="/onboarding" className="mt-4 inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-white">
-          Gå til onboarding
+        <Link href="/login?next=/account" className="mt-4 inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-white">
+          Gå til login
         </Link>
       </main>
     );
@@ -40,6 +41,7 @@ export default async function ShoppingListPage() {
                 where: { isQuarantined: false },
                 include: { store: true },
                 orderBy: { date: "desc" },
+                take: 220,
               },
             },
           },
@@ -54,8 +56,8 @@ export default async function ShoppingListPage() {
       <main className="mx-auto max-w-4xl px-4 py-10">
         <h1 className="text-3xl font-bold">Handleliste</h1>
         <p className="mt-4 text-slate-600 dark:text-slate-300">Ingen handleliste funnet ennå.</p>
-        <Link href="/onboarding" className="mt-4 inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-white">
-          Opprett handleliste
+        <Link href="/account" className="mt-4 inline-flex rounded-xl bg-emerald-600 px-4 py-2 text-white">
+          Opprett i Min konto
         </Link>
       </main>
     );
@@ -76,6 +78,7 @@ export default async function ShoppingListPage() {
           where: { isQuarantined: false },
           include: { store: true },
           orderBy: { date: "desc" },
+          take: 180,
         },
       },
       take: 120,
@@ -197,18 +200,54 @@ export default async function ShoppingListPage() {
         </div>
       </div>
 
-      <section className="mb-6 grid gap-4 sm:grid-cols-3 fade-rise">
-        <article className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900 dark:bg-emerald-950/25">
-          <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Varer</p>
-          <p className="mt-1 text-2xl font-semibold text-emerald-900 dark:text-emerald-100">{totalItems}</p>
+      <section className="mb-6 grid gap-4 lg:grid-cols-3 fade-rise">
+        <article className="rounded-3xl border border-emerald-200 bg-emerald-50/80 p-5 dark:border-emerald-900 dark:bg-emerald-950/25">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Dagens innsikt</p>
+          <h2 className="mt-2 text-xl font-semibold text-emerald-900 dark:text-emerald-100">{plan.recommendation.shouldAutoRecommend ? plan.recommendation.recommendedStore?.storeName ?? "Sjekk sammenligning" : "Vi trenger litt mer data"}</h2>
+          <p className="mt-2 text-sm text-emerald-900/90 dark:text-emerald-100/90">{plan.recommendation.message}</p>
+        </article>
+        <article className="rounded-3xl border border-cyan-200 bg-cyan-50/80 p-5 dark:border-cyan-900 dark:bg-cyan-950/20">
+          <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Billigste butikk i ditt område</p>
+          <h2 className="mt-2 text-2xl font-semibold text-cyan-900 dark:text-cyan-100">{plan.cheapestStore?.storeName ?? "Ikke klart ennå"}</h2>
+          <p className="mt-2 text-sm text-cyan-900/90 dark:text-cyan-100/90">Estimert totalsum: {formatNok(plan.cheapestStore?.totalPrice ?? 0)}</p>
+        </article>
+        <article className="rounded-3xl border border-amber-200 bg-amber-50/80 p-5 dark:border-amber-900 dark:bg-amber-950/20">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Hva du sparer denne uken</p>
+          <h2 className="mt-2 text-2xl font-semibold text-amber-900 dark:text-amber-100">{formatNok(plan.estimatedSavings)}</h2>
+          <p className="mt-2 text-sm text-amber-900/90 dark:text-amber-100/90">Forskjell mot dyreste observerte alternativ.</p>
+        </article>
+      </section>
+
+      <section className="mb-6 grid gap-4 sm:grid-cols-3 fade-rise-delayed">
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Varer</p>
+          <p className="mt-1 text-2xl font-semibold">{totalItems}</p>
         </article>
         <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
           <p className="text-xs uppercase tracking-wide text-slate-500">Antall enheter</p>
           <p className="mt-1 text-2xl font-semibold">{totalUnits}</p>
         </article>
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Merker i kurven</p>
+          <p className="mt-1 text-2xl font-semibold">{distinctBrands}</p>
+        </article>
+      </section>
+
+      <section className="mb-6 grid gap-4 md:grid-cols-3 fade-rise-delayed">
         <article className="rounded-2xl border border-cyan-200 bg-cyan-50/80 p-4 dark:border-cyan-900 dark:bg-cyan-950/20">
-          <p className="text-xs uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Merker i kurven</p>
-          <p className="mt-1 text-2xl font-semibold text-cyan-900 dark:text-cyan-100">{distinctBrands}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Medlemspris brukt</p>
+          <p className="mt-1 text-2xl font-semibold text-cyan-900 dark:text-cyan-100">{plan.pricingTruth.loyaltyAppliedItems}</p>
+          <p className="mt-1 text-xs text-cyan-800/80 dark:text-cyan-200/80">linjer i dagens beregning.</p>
+        </article>
+        <article className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900 dark:bg-amber-950/20">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Låst bak medlemskap</p>
+          <p className="mt-1 text-2xl font-semibold text-amber-900 dark:text-amber-100">{plan.pricingTruth.membershipLockedItems}</p>
+          <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">linjer kan bli billigere med medlemspris.</p>
+        </article>
+        <article className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Kampanjepris brukt</p>
+          <p className="mt-1 text-2xl font-semibold text-emerald-900 dark:text-emerald-100">{plan.pricingTruth.promoAppliedItems}</p>
+          <p className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">linjer med aktiv kampanje.</p>
         </article>
       </section>
 
@@ -242,7 +281,7 @@ export default async function ShoppingListPage() {
             <p className="mt-2 max-w-2xl text-sm text-slate-700 dark:text-slate-200">{plan.recommendation.message}</p>
           </div>
           <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/80">
-            <p className="text-xs uppercase tracking-wide text-slate-500">Mulig sparing na</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">Mulig sparing nå</p>
             <p className="mt-1 text-3xl font-semibold text-emerald-700 dark:text-emerald-300">{formatNok(plan.estimatedSavings)}</p>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Mot dyreste observerte alternativ.</p>
           </div>
@@ -255,14 +294,14 @@ export default async function ShoppingListPage() {
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Dekning: {plan.coveredItems}/{plan.analyzedItems} varer.</p>
           </article>
           <article className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-4 dark:border-emerald-900 dark:bg-emerald-950/25">
-            <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Kjop na</p>
+            <p className="text-xs uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Kjøp nå</p>
             <p className="mt-1 text-xl font-semibold text-emerald-900 dark:text-emerald-100">{buyNowItems.length || 0} varer</p>
-            <p className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">{buyNowItems.map((item) => item.productName).join(", ") || "Ingen tydelige vinduer akkurat na."}</p>
+            <p className="mt-1 text-xs text-emerald-800/80 dark:text-emerald-200/80">{buyNowItems.map((item) => item.productName).join(", ") || "Ingen tydelige vinduer akkurat nå."}</p>
           </article>
           <article className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 dark:border-amber-900 dark:bg-amber-950/25">
             <p className="text-xs uppercase tracking-wide text-amber-700 dark:text-amber-300">Vent gjerne</p>
             <p className="mt-1 text-xl font-semibold text-amber-900 dark:text-amber-100">{waitItems.length || 0} varer</p>
-            <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">{waitItems.map((item) => item.productName).join(", ") || "Ingen tydelige vent-signaler akkurat na."}</p>
+            <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-200/80">{waitItems.map((item) => item.productName).join(", ") || "Ingen tydelige vent-signaler akkurat nå."}</p>
           </article>
         </div>
 
@@ -270,9 +309,9 @@ export default async function ShoppingListPage() {
           <p className="font-medium text-cyan-900 dark:text-cyan-100">Dekningsscore for handlelisten: {plan.coverageScore}/100</p>
           <p className="mt-1 text-cyan-800/90 dark:text-cyan-200/90">
             {plan.coverageScore >= 80
-              ? "Sterk dekning pa tvers av butikker akkurat na."
+              ? "Sterk dekning på tvers av butikker akkurat nå."
               : plan.coverageScore >= 55
-                ? "Middels dekning. Du far nyttige signaler, men noen varer mangler fortsatt."
+                ? "Middels dekning. Du får nyttige signaler, men noen varer mangler fortsatt."
                 : "Lav dekning. Forbedre med kvitteringer og flere observerte priser for sikrere anbefaling."}
           </p>
         </div>
@@ -296,17 +335,17 @@ export default async function ShoppingListPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Substitusjonsmotor</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight">Bytt noen varer og press budsjettet ned</h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Vi foreslar billigere kandidater innen samme kategori nar prisforskjellen er tydelig nok til a vaere nyttig.</p>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Vi foreslår billigere kandidater innen samme kategori når prisforskjellen er tydelig nok til å være nyttig.</p>
             </div>
             <div className="rounded-2xl border border-cyan-200 bg-cyan-50/80 p-4 dark:border-cyan-900 dark:bg-cyan-950/25">
-              <p className="text-xs uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Dekningsscore na</p>
+              <p className="text-xs uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Dekningsscore nå</p>
               <p className="mt-1 text-2xl font-semibold text-cyan-900 dark:text-cyan-100">{coverageMetrics.score.overall}/100</p>
             </div>
           </div>
 
           {substitutionSuggestions.length === 0 ? (
             <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 p-5 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950/50 dark:text-slate-400">
-              Ingen tydelige bytteforslag enda. Det betyr vanligvis at kategoridekningen er for tynn eller at prisforskjellene er for sma til a gi et seriost forslag.
+              Ingen tydelige bytteforslag enda. Det betyr vanligvis at kategoridekningen er for tynn eller at prisforskjellene er for små til å gi et seriøst forslag.
             </div>
           ) : (
             <ul className="mt-4 space-y-3 text-sm">
@@ -320,7 +359,7 @@ export default async function ShoppingListPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold text-emerald-700 dark:text-emerald-300">{formatNok(suggestion.estimatedSavings)}</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Tillit: {suggestion.confidence === "hoy" ? "Hoy" : "Medium"}</p>
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Tillit: {suggestion.confidence === "hoy" ? "Høy" : "Medium"}</p>
                     </div>
                   </div>
                 </li>
@@ -350,7 +389,7 @@ export default async function ShoppingListPage() {
       <section className="mt-6 fade-rise-slow">
         <TransparencySnapshot
           metrics={transparencyMetrics}
-          title="Hvor robust er prisgrunnlaget akkurat na?"
+          title="Hvor robust er prisgrunnlaget akkurat nå?"
           subtitle="Du skal kunne se om prisene er ferske nok og hvor mye som er filtrert bort før du bestemmer hvor du handler."
         />
       </section>
@@ -361,7 +400,7 @@ export default async function ShoppingListPage() {
             Kvitteringer
           </Link>
           <Link href={`/compare?shoppingListId=${shoppingList.id}`} className="mobile-bottom-action min-w-0 rounded-xl bg-emerald-600 px-2.5 py-2 text-center text-[13px] font-medium leading-tight text-white sm:px-3 sm:text-sm">
-            Sammenlign na
+            Sammenlign nå
           </Link>
         </div>
       </div>

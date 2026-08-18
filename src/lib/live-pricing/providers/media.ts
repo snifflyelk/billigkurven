@@ -112,6 +112,58 @@ export function isLikelyProductImageUrl(url: string | null | undefined) {
   return hasLikelyPath;
 }
 
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function getMeaningfulTokens(value: string) {
+  const stopwords = new Set([
+    "med",
+    "uten",
+    "stor",
+    "liten",
+    "mini",
+    "fersk",
+    "original",
+    "ekstra",
+    "norway",
+    "norge",
+  ]);
+
+  return normalizeText(value)
+    .split(/\s+/)
+    .filter((token) => token.length >= 4 && !stopwords.has(token));
+}
+
+export function isLikelyImageForProduct(
+  imageUrl: string | null | undefined,
+  product: { name: string; brand?: string | null; ean?: string | null },
+) {
+  if (!isLikelyProductImageUrl(imageUrl)) return false;
+  if (!imageUrl) return false;
+
+  const normalizedUrl = normalizeText(decodeURIComponent(imageUrl));
+
+  const ean = (product.ean ?? "").trim();
+  if (ean.length >= 8 && normalizedUrl.includes(ean.toLowerCase())) {
+    return true;
+  }
+
+  const tokens = [
+    ...getMeaningfulTokens(product.name),
+    ...getMeaningfulTokens(product.brand ?? ""),
+  ];
+
+  if (tokens.length === 0) return true;
+
+  return tokens.some((token) => normalizedUrl.includes(token));
+}
+
 export function shouldReplaceExistingImage(existingUrl: string | null | undefined) {
   if (!existingUrl) return true;
   return !isLikelyProductImageUrl(existingUrl);
