@@ -103,6 +103,10 @@ main > section:first-of-type {
   background: var(--brand-blue) !important;
 }
 
+main > section:first-of-type > .pointer-events-none {
+  display: none !important;
+}
+
 main > section:first-of-type :is(h1, h2, h3, p, span) {
   color: #ffffff !important;
 }
@@ -178,6 +182,14 @@ main .bg-emerald-50,
 main .bg-cyan-50,
 main .bg-slate-50 {
   background-color: #ffffff !important;
+}
+
+main > section:not(:first-of-type) :is([class*="bg-emerald-"], [class*="bg-cyan-"], [class*="bg-amber-"], [class*="bg-orange-"]) {
+  background-color: #ffffff !important;
+}
+
+main > section:not(:first-of-type) :is([class*="text-emerald-"], [class*="text-cyan-"], [class*="text-amber-"], [class*="text-orange-"]) {
+  color: var(--brand-blue) !important;
 }
 
 @keyframes fade-rise {
