@@ -3,7 +3,7 @@ import { MapPinIcon } from "@heroicons/react/24/outline";
 
 export function Footer() {
   return (
-    <footer className="mt-20 border-t-8 border-[#E60000] bg-[#002B5C] py-20 text-white">
+    <footer className="mt-20 border-t-8 border-[#E60023] bg-[#0A1A2F] py-20 text-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-8">
         <div className="grid gap-16 border-b border-white/20 pb-12 sm:grid-cols-2 lg:grid-cols-3">
 
@@ -73,7 +73,7 @@ export function Footer() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-white/60">Kontakt</p>
-            <a href="mailto:kontakt@billigkurven.no" className="mt-1 inline-block font-medium text-white hover:text-[#E60000] hover:underline">
+            <a href="mailto:kontakt@billigkurven.no" className="mt-1 inline-block font-medium text-white hover:text-[#E60023] hover:underline">
               kontakt@billigkurven.no
             </a>
           </div>

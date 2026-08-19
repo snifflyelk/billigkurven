@@ -343,7 +343,7 @@ export default async function Home({
 
         <div className="relative grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-9">
           <article className="space-y-6 fade-rise">
-            <span className="store-hero-badge inline-flex items-center gap-2 rounded-full border border-white bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#002B5C]">
+            <span className="store-hero-badge inline-flex items-center gap-2 rounded-full border border-[#D9CBA3] bg-[#F7F4EF] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#0A1A2F]">
               <BoltIcon className="h-3.5 w-3.5" aria-hidden />
               Kjedepriser i sanntid
             </span>
@@ -434,56 +434,6 @@ export default async function Home({
               </div>
             </div>
           </aside>
-        </div>
-      </section>
-
-      <section className="mt-12 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 md:p-8">
-        <header className="mb-6 space-y-2">
-          <h2 className="display-font text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Hvordan fungerer Billigkurven?
-          </h2>
-          <p className="max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-            Enklere oversikt over kjedepriser, bygget for norske dagligvarer.
-          </p>
-        </header>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {[
-            "Vi henter priser fra norske dagligvarekjeder.",
-            "Vi analyserer prisene nasjonalt per kjede.",
-            "Du ser hvilken kjede som er billigst - helt gratis.",
-            "Valgfritt: Få prisvarsler når varer du følger endrer pris.",
-          ].map((step, index) => (
-            <article key={step} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-950/50">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Steg {index + 1}</p>
-              <p className="mt-2 text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-100">{step}</p>
-            </article>
-          ))}
-        </div>
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <article className="rounded-2xl border border-cyan-200 bg-cyan-50/80 p-5 dark:border-cyan-900 dark:bg-cyan-950/25">
-            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Datakilder</p>
-            <p className="mt-2 text-sm leading-relaxed text-cyan-900 dark:text-cyan-100">
-              Vi viser alltid grunnlaget for prisbildet: oppdateringsfrekvens, antall observasjoner og hvilke kjeder som er med i sammenligningen.
-            </p>
-          </article>
-
-          <article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kjedene vi overvåker</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {[
-                { name: "REMA 1000", tone: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-200" },
-                { name: "KIWI", tone: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200" },
-                { name: "COOP", tone: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200" },
-                { name: "MENY", tone: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" },
-              ].map((chain) => (
-                <div key={chain.name} className={`rounded-xl border border-slate-200 px-3 py-2 text-center text-xs font-semibold dark:border-slate-700 ${chain.tone}`}>
-                  {chain.name}
-                </div>
-              ))}
-            </div>
-          </article>
         </div>
       </section>
 
@@ -828,6 +778,56 @@ export default async function Home({
             Se billigste kjede i dag
           </TrackedLink>
         </header>
+      </section>
+
+      <section className="mt-12 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 md:p-8">
+        <header className="mb-6 space-y-2">
+          <h2 className="display-font text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            Hvordan fungerer Billigkurven?
+          </h2>
+          <p className="max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+            Enklere oversikt over kjedepriser, bygget for norske dagligvarer.
+          </p>
+        </header>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            "Vi henter priser fra norske dagligvarekjeder.",
+            "Vi analyserer prisene nasjonalt per kjede.",
+            "Du ser hvilken kjede som er billigst - helt gratis.",
+            "Valgfritt: Få prisvarsler når varer du følger endrer pris.",
+          ].map((step, index) => (
+            <article key={step} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-700 dark:bg-slate-950/50">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Steg {index + 1}</p>
+              <p className="mt-2 text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-100">{step}</p>
+            </article>
+          ))}
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <article className="rounded-2xl border border-cyan-200 bg-cyan-50/80 p-5 dark:border-cyan-900 dark:bg-cyan-950/25">
+            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">Datakilder</p>
+            <p className="mt-2 text-sm leading-relaxed text-cyan-900 dark:text-cyan-100">
+              Vi viser alltid grunnlaget for prisbildet: oppdateringsfrekvens, antall observasjoner og hvilke kjeder som er med i sammenligningen.
+            </p>
+          </article>
+
+          <article className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Kjedene vi overvåker</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {[
+                { name: "REMA 1000", tone: "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-200" },
+                { name: "KIWI", tone: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200" },
+                { name: "COOP", tone: "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200" },
+                { name: "MENY", tone: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200" },
+              ].map((chain) => (
+                <div key={chain.name} className={`rounded-xl border border-slate-200 px-3 py-2 text-center text-xs font-semibold dark:border-slate-700 ${chain.tone}`}>
+                  {chain.name}
+                </div>
+              ))}
+            </div>
+          </article>
+        </div>
       </section>
 
       <div className="fixed inset-x-0 bottom-3 z-40 px-4 sm:hidden">

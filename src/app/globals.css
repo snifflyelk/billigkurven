@@ -3,20 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --bg-main: #f5f5f5;
-  --bg-accent: #f5f5f5;
+  --bg-main: #f7f4ef;
+  --bg-accent: #f7f4ef;
   --surface: #ffffff;
-  --ink: #002b5c;
-  --brand-blue: #002b5c;
-  --brand-red: #e60000;
-  --brand-gray: #f5f5f5;
+  --ink: #0a1a2f;
+  --brand-blue: #0a1a2f;
+  --brand-sapphire: #12395b;
+  --brand-gold: #d9cba3;
+  --brand-red: #e60023;
+  --brand-gray: #f7f4ef;
 }
 
 .dark {
-  --bg-main: #f5f5f5;
-  --bg-accent: #f5f5f5;
+  --bg-main: #f7f4ef;
+  --bg-accent: #f7f4ef;
   --surface: #ffffff;
-  --ink: #002b5c;
+  --ink: #0a1a2f;
 }
 
 body {
@@ -180,13 +182,13 @@ main .text-cyan-800 {
 main .border-emerald-200,
 main .border-cyan-200,
 main .border-slate-200 {
-  border-color: #d4d9df !important;
+  border-color: var(--brand-gold) !important;
 }
 
 main .bg-emerald-50,
 main .bg-cyan-50,
 main .bg-slate-50 {
-  background-color: #ffffff !important;
+  background-color: var(--brand-gray) !important;
 }
 
 main > section:not(:first-of-type) :is([class*="bg-emerald-"], [class*="bg-cyan-"], [class*="bg-amber-"], [class*="bg-orange-"]) {
