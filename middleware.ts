@@ -40,6 +40,10 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
+    "/varer",
+    "/product/:path*",
+    "/insights/:path*",
     "/admin/:path*",
     "/api/admin/:path*",
     "/data-quality",
