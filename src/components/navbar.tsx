@@ -165,9 +165,9 @@ export function Navbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
-        <Link href="/" className="shrink-0 text-xl font-bold tracking-tight text-emerald-700 transition hover:text-emerald-600 dark:text-emerald-300 dark:hover:text-emerald-200">
+    <header className="sticky top-0 z-50 border-b-4 border-red-600 bg-white">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-5 sm:px-8">
+        <Link href="/" className="shrink-0 text-xl font-bold tracking-tight text-[#002B5C] transition hover:text-red-600">
           Billigkurven
         </Link>
 
@@ -182,11 +182,11 @@ export function Navbar() {
                   href={link.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "rounded-xl px-3 py-2 font-medium transition",
-                    "hover:bg-emerald-100/80 hover:text-emerald-900 dark:hover:bg-emerald-900/35 dark:hover:text-emerald-200",
+                    "rounded-none px-3 py-2 font-medium transition",
+                    "hover:bg-[#F5F5F5] hover:text-[#E60000]",
                     active
-                      ? "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-500/60 dark:bg-emerald-500 dark:text-emerald-950 dark:ring-emerald-300/70"
-                      : "text-slate-600 dark:text-slate-300",
+                      ? "bg-[#002B5C] text-white"
+                      : "text-[#002B5C]",
                   )}
                 >
                   {link.label}
@@ -212,10 +212,10 @@ export function Navbar() {
               href={ctaLink.href}
               aria-current={isActive(ctaLink.href) ? "page" : undefined}
               className={cn(
-                "ml-3 rounded-xl px-3 py-2 font-medium transition",
+                "ml-3 rounded-none px-3 py-2 font-medium transition",
                 isActive(ctaLink.href)
-                  ? "bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-500/60 dark:bg-emerald-500 dark:text-emerald-950 dark:ring-emerald-300/70"
-                  : "border border-emerald-300 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-700 dark:text-emerald-200 dark:hover:bg-emerald-900/40",
+                  ? "bg-[#E60000] text-white"
+                  : "border border-[#E60000] text-[#E60000] hover:bg-[#E60000] hover:text-white",
               )}
             >
               {ctaLink.label}

@@ -337,7 +337,7 @@ export default async function Home({
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-28 pt-8 sm:px-6 md:pb-36 md:pt-12">
-      <section className="relative overflow-hidden rounded-[2rem] border border-emerald-200/70 bg-gradient-to-br from-emerald-50 via-white to-cyan-50 p-6 shadow-xl shadow-emerald-900/5 sm:p-8 lg:p-10 dark:border-emerald-900/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/20 dark:shadow-black/20">
+      <section className="store-hero relative overflow-hidden p-6 sm:p-8 lg:p-10">
         <div className="pointer-events-none absolute -right-24 top-0 h-64 w-64 rounded-full bg-emerald-200/45 blur-3xl dark:bg-emerald-700/20" aria-hidden />
         <div className="pointer-events-none absolute -left-24 bottom-0 h-56 w-56 rounded-full bg-cyan-200/35 blur-3xl dark:bg-cyan-700/20" aria-hidden />
 
