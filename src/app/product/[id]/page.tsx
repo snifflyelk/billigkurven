@@ -3,20 +3,28 @@ import { PriceHistoryChart } from "@/components/price-history-chart";
 import { prisma } from "@/lib/prisma";
 import { filterLogicalPriceEntries, filterOutlierValues } from "@/lib/pricing-sanity";
 import { confidenceLabel, formatNok } from "@/lib/utils";
+import { unstable_cache } from "next/cache";
 
 export const revalidate = 300;
 
-export default async function ProductPage({ params }: { params: { id: string } }) {
-  const product = await prisma.product.findUnique({
-    where: { id: params.id },
-    include: {
-      prices: {
-        include: { store: true },
-        where: { isQuarantined: false },
-        orderBy: { date: "desc" },
+const getCachedProduct = unstable_cache(
+  async (productId: string) =>
+    prisma.product.findUnique({
+      where: { id: productId },
+      include: {
+        prices: {
+          include: { store: true },
+          where: { isQuarantined: false },
+          orderBy: { date: "desc" },
+        },
       },
-    },
-  });
+    }),
+  ["product-page-data-v1"],
+  { revalidate: 300 },
+);
+
+export default async function ProductPage({ params }: { params: { id: string } }) {
+  const product = await getCachedProduct(params.id);
 
   if (!product) {
     return (

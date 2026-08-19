@@ -3,9 +3,50 @@ import { Prisma } from "@prisma/client";
 
 import { AllProductsCatalog, type CatalogProduct, type CatalogSortOption } from "@/components/all-products-catalog";
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
 const PAGE_SIZE = 25;
+
+const getCachedCatalogPage = unstable_cache(
+  async (query: string, category: string, brand: string, sortBy: CatalogSortOption, skip: number) => {
+    const baseWhere: Prisma.ProductWhereInput = {
+      NOT: { name: { startsWith: "Vare " } },
+      prices: { some: { isQuarantined: false } },
+    };
+    const filteredWhere: Prisma.ProductWhereInput = {
+      ...baseWhere,
+      ...(query
+        ? { OR: [{ name: { contains: query, mode: "insensitive" } }, { brand: { contains: query, mode: "insensitive" } }, { category: { contains: query, mode: "insensitive" } }] }
+        : {}),
+      ...(category !== "all" ? { category } : {}),
+      ...(brand !== "all" ? { brand } : {}),
+    };
+
+    const [totalAll, totalFiltered, categoryRows, brandRows, products] = await Promise.all([
+      prisma.product.count({ where: baseWhere }),
+      prisma.product.count({ where: filteredWhere }),
+      prisma.product.findMany({ where: baseWhere, distinct: ["category"], select: { category: true }, orderBy: { category: "asc" } }),
+      prisma.product.findMany({ where: baseWhere, distinct: ["brand"], select: { brand: true }, orderBy: { brand: "asc" } }),
+      prisma.product.findMany({
+        where: filteredWhere,
+        select: { id: true, name: true, brand: true, category: true, packageQuantity: true, packageUnit: true, updatedAt: true },
+        orderBy: sortBy === "name" ? { name: "asc" } : { updatedAt: "desc" },
+        skip,
+        take: PAGE_SIZE,
+      }),
+    ]);
+
+    const priceRows = await prisma.price.findMany({
+      where: { isQuarantined: false, productId: { in: products.map((product) => product.id) } },
+      select: { productId: true, storeId: true, price: true, date: true },
+    });
+
+    return { totalAll, totalFiltered, categoryRows, brandRows, products, priceRows };
+  },
+  ["catalog-page-data-v1"],
+  { revalidate: 300 },
+);
 
 function formatPackageLabel(quantity: number | null, unit: "G" | "ML" | "STK" | null) {
   if (!quantity || !unit) return "Ukjent pakning";
@@ -39,70 +80,15 @@ export default async function AllProductsPage({
   const brand = (searchParams.brand ?? "all").trim() || "all";
   const sortBy: CatalogSortOption = searchParams.sort === "name" ? "name" : "updated";
 
-  const baseWhere: Prisma.ProductWhereInput = {
-    NOT: {
-      name: {
-        startsWith: "Vare ",
-      },
-    },
-    prices: {
-      some: {
-        isQuarantined: false,
-      },
-    },
-  };
-
-  const filteredWhere: Prisma.ProductWhereInput = {
-    ...baseWhere,
-    ...(query
-      ? {
-          OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { brand: { contains: query, mode: "insensitive" } },
-            { category: { contains: query, mode: "insensitive" } },
-          ],
-        }
-      : {}),
-    ...(category !== "all" ? { category } : {}),
-    ...(brand !== "all" ? { brand } : {}),
-  };
-
-  const [totalAll, totalFiltered, categoryRows, brandRows] = await Promise.all([
-    prisma.product.count({ where: baseWhere }),
-    prisma.product.count({ where: filteredWhere }),
-    prisma.product.findMany({
-      where: baseWhere,
-      distinct: ["category"],
-      select: { category: true },
-      orderBy: { category: "asc" },
-    }),
-    prisma.product.findMany({
-      where: baseWhere,
-      distinct: ["brand"],
-      select: { brand: true },
-      orderBy: { brand: "asc" },
-    }),
-  ]);
-
+  const initialSkip = (currentPage - 1) * PAGE_SIZE;
+  let cachedPage = await getCachedCatalogPage(query, category, brand, sortBy, initialSkip);
+  const { totalAll, totalFiltered, categoryRows, brandRows } = cachedPage;
   const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
-  const skip = (safeCurrentPage - 1) * PAGE_SIZE;
-
-  const products = await prisma.product.findMany({
-    where: filteredWhere,
-    select: {
-      id: true,
-      name: true,
-      brand: true,
-      category: true,
-      packageQuantity: true,
-      packageUnit: true,
-      updatedAt: true,
-    },
-    orderBy: sortBy === "name" ? { name: "asc" } : { updatedAt: "desc" },
-    skip,
-    take: PAGE_SIZE,
-  });
+  if (safeCurrentPage !== currentPage) {
+    cachedPage = await getCachedCatalogPage(query, category, brand, sortBy, (safeCurrentPage - 1) * PAGE_SIZE);
+  }
+  const { products, priceRows } = cachedPage;
 
   if (totalAll === 0) {
     return (
@@ -115,19 +101,6 @@ export default async function AllProductsPage({
       </main>
     );
   }
-
-  const priceRows = await prisma.price.findMany({
-    where: {
-      isQuarantined: false,
-      productId: { in: products.map((product) => product.id) },
-    },
-    select: {
-      productId: true,
-      storeId: true,
-      price: true,
-      date: true,
-    },
-  });
 
   const stats = new Map<
     string,
