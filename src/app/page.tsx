@@ -343,7 +343,7 @@ export default async function Home({
 
         <div className="relative grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-9">
           <article className="space-y-6 fade-rise">
-            <span className="store-hero-badge inline-flex items-center gap-2 rounded-full border border-[#D9CBA3] bg-[#F7F4EF] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#0A1A2F]">
+            <span className="store-hero-badge inline-flex items-center gap-2 rounded-full border border-[#F2B880] bg-[#F7F8F6] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#17212B]">
               <BoltIcon className="h-3.5 w-3.5" aria-hidden />
               Kjedepriser i sanntid
             </span>
@@ -444,79 +444,11 @@ export default async function Home({
         </div>
       </section>
 
-      <section id="home-why-different" className="mt-16 fade-rise-delayed">
-        <SectionImpression sectionId="home-why-different" eventProps={{ variant, location: "home" }} />
-        <header className="mb-5">
-          <h2 className="display-font text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Hvorfor Billigkurven skiller seg ut
-          </h2>
-        </header>
-        <div className="grid gap-4 md:grid-cols-3">
-          {differentiationCards.map((card) => {
-            const Icon = card.icon;
-
-            return (
-              <article
-                key={card.title}
-                className="group flex h-full flex-col rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-sm shadow-slate-900/5 ring-1 ring-white/80 transition duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/85 dark:ring-slate-800"
-              >
-                <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ${card.ringTone} dark:bg-slate-900`}>
-                  <Icon className={`h-5 w-5 ${card.iconTone}`} aria-hidden />
-                </span>
-                <h3 className="mt-3 text-base font-semibold text-slate-900 dark:text-slate-100">{card.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{card.description}</p>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
       <section className="mt-16">
-        <SectionImpression sectionId="home-live-insights" eventProps={{ variant, location: "home" }} />
-        <header className="mb-5">
+        <header className="mb-6">
           <h2 className="display-font text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Hvem er billigst i dag?
+            Produkter
           </h2>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Konkrete signaler fra dagens kjedesammenligning.
-          </p>
-        </header>
-        <div className="grid gap-4 md:grid-cols-3">
-          {liveStatusExamples.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <article key={item.title} className={`rounded-2xl border p-4 shadow-sm ${item.tone}`}>
-                <span className="inline-flex items-center gap-2 rounded-full border border-current/20 bg-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide dark:bg-slate-900/40">
-                  <SparklesIcon className="h-3.5 w-3.5" aria-hidden />
-                  Live
-                </span>
-                <div className="mt-3 flex items-start gap-2.5">
-                  <Icon className="mt-0.5 h-5 w-5" aria-hidden />
-                  <div>
-                    <p className="text-sm font-semibold leading-snug">{item.title}</p>
-                    <p className="mt-1 text-xs opacity-85">{item.detail}</p>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="mt-16">
-        <header className="mb-6 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="display-font text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              Produkter vi overvåker
-            </h2>
-            <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
-              {productCount.toLocaleString("nb-NO")} produkter i databasen. Her er et utvalg med tydelige kjedesignaler.
-            </p>
-          </div>
-          <Link href="/shopping-list" className="text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-300">
-            Gå til handleliste
-          </Link>
         </header>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product, index) => {
@@ -620,62 +552,6 @@ export default async function Home({
       </section>
 
       <section className="mt-16 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 md:p-8">
-        <header className="mb-6">
-          <h2 className="display-font text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-            Brukes av norske familier som vil kutte matbudsjettet
-          </h2>
-        </header>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <article className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 dark:border-slate-700 dark:bg-slate-950/50">
-            <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Brukes av</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">24 300</p>
-            <p className="text-sm text-slate-600 dark:text-slate-300">nordmenn bruker Billigkurven</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 dark:border-slate-700 dark:bg-slate-950/50">
-            <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Sparer i snitt</p>
-            <p className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">845 kr</p>
-            <p className="text-sm text-slate-600 dark:text-slate-300">spart per måned i snitt</p>
-          </article>
-          <article className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 dark:border-slate-700 dark:bg-slate-950/50">
-            <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Typisk bruker</p>
-            <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">Småbarnsfamilier</p>
-            <p className="text-sm text-slate-600 dark:text-slate-300">handler 1-2 ganger i uken</p>
-          </article>
-        </div>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {[
-            {
-              quote: "Vi sparte 420 kr første uken med Billigkurven.",
-              person: "Maria og Jonas, Oslo",
-              initials: "👩‍🦱",
-            },
-            {
-              quote: "Endelig oversikt over hvilken kjede som faktisk er billigst.",
-              person: "Ahmed, Trondheim",
-              initials: "🧑",
-            },
-            {
-              quote: "Vi handler smartere uten å bruke ekstra tid på planlegging.",
-              person: "Silje, Bergen",
-              initials: "👩",
-            },
-          ].map((item) => (
-            <article key={item.person} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-base font-semibold tracking-wide text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                {item.initials}
-              </div>
-              <p className="text-sm leading-relaxed text-slate-700 dark:text-slate-200">&quot;{item.quote}&quot;</p>
-              <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                {item.person}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-16 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 md:p-8">
         <header className="mb-5">
           <h2 className="display-font text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
             Hvorfor Billigkurven?
@@ -756,6 +632,66 @@ export default async function Home({
               </p>
             </article>
           </div>
+        </div>
+      </section>
+
+      <section id="home-why-different" className="mt-16 fade-rise-delayed">
+        <SectionImpression sectionId="home-why-different" eventProps={{ variant, location: "home" }} />
+        <header className="mb-5">
+          <h2 className="display-font text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            Hvorfor Billigkurven skiller seg ut
+          </h2>
+        </header>
+        <div className="grid gap-4 md:grid-cols-3">
+          {differentiationCards.map((card) => {
+            const Icon = card.icon;
+
+            return (
+              <article
+                key={card.title}
+                className="group flex h-full flex-col rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-sm shadow-slate-900/5 ring-1 ring-white/80 transition duration-300 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900/85 dark:ring-slate-800"
+              >
+                <span className={`inline-flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ${card.ringTone} dark:bg-slate-900`}>
+                  <Icon className={`h-5 w-5 ${card.iconTone}`} aria-hidden />
+                </span>
+                <h3 className="mt-3 text-base font-semibold text-slate-900 dark:text-slate-100">{card.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{card.description}</p>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="mt-16">
+        <SectionImpression sectionId="home-live-insights" eventProps={{ variant, location: "home" }} />
+        <header className="mb-5">
+          <h2 className="display-font text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            Hvem er billigst i dag?
+          </h2>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Konkrete signaler fra dagens kjedesammenligning.
+          </p>
+        </header>
+        <div className="grid gap-4 md:grid-cols-3">
+          {liveStatusExamples.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <article key={item.title} className={`rounded-2xl border p-4 shadow-sm ${item.tone}`}>
+                <span className="inline-flex items-center gap-2 rounded-full border border-current/20 bg-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide dark:bg-slate-900/40">
+                  <SparklesIcon className="h-3.5 w-3.5" aria-hidden />
+                  Live
+                </span>
+                <div className="mt-3 flex items-start gap-2.5">
+                  <Icon className="mt-0.5 h-5 w-5" aria-hidden />
+                  <div>
+                    <p className="text-sm font-semibold leading-snug">{item.title}</p>
+                    <p className="mt-1 text-xs opacity-85">{item.detail}</p>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
 

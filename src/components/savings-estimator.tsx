@@ -111,7 +111,7 @@ export function SavingsEstimator() {
   const resolvedEstimate = estimate ?? fallbackEstimate;
 
   return (
-    <section className="rounded-3xl border border-orange-200 bg-gradient-to-br from-orange-50 via-white to-emerald-50 p-5 shadow-sm dark:border-orange-900 dark:from-orange-950/20 dark:via-slate-950 dark:to-emerald-950/20 md:p-6">
+    <section className="rounded-3xl border border-slate-300 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-white md:p-6">
       <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-orange-700 dark:text-orange-300">60-sekunders spareestimat</p>
@@ -168,7 +168,7 @@ export function SavingsEstimator() {
           <p className="mt-3 text-xs font-medium text-slate-500 dark:text-slate-400">Typisk bruker sparer 845 kr/mnd.</p>
         </div>
 
-        <div className="rounded-2xl border border-emerald-200 bg-white/90 p-5 dark:border-emerald-900 dark:bg-slate-900/80">
+        <div className="rounded-2xl border border-[#F2B880] bg-[#F2B880] p-5 dark:border-[#F2B880] dark:bg-[#F2B880]">
           <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Ditt estimat</p>
           <p className="mt-2 text-3xl font-bold text-emerald-700 dark:text-emerald-300">{resolvedEstimate.monthlySavings} kr/mnd</p>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Ca {resolvedEstimate.weeklySavings} kr per uke · {resolvedEstimate.annualSavings.toLocaleString("nb-NO")} kr per år</p>

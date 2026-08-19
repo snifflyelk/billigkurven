@@ -165,9 +165,9 @@ export function Navbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b-4 border-[#E60023] bg-[#F7F4EF]">
+    <header className="sticky top-0 z-50 border-b-4 border-[#D95D39] bg-[#F7F8F6]">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-5 sm:px-8">
-        <Link href="/" className="shrink-0 text-xl font-bold tracking-tight text-[#0A1A2F] transition hover:text-[#E60023]">
+        <Link href="/" className="shrink-0 text-xl font-bold tracking-tight text-[#17212B] transition hover:text-[#D95D39]">
           Billigkurven
         </Link>
 
@@ -183,10 +183,10 @@ export function Navbar() {
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "rounded-none px-3 py-2 font-medium transition",
-                    "hover:bg-[#D9CBA3] hover:text-[#0A1A2F]",
+                    "hover:bg-[#F2B880] hover:text-[#17212B]",
                     active
-                      ? "bg-[#0A1A2F] text-white"
-                      : "text-[#0A1A2F]",
+                      ? "bg-[#17212B] text-white"
+                      : "text-[#17212B]",
                   )}
                 >
                   {link.label}
@@ -214,8 +214,8 @@ export function Navbar() {
               className={cn(
                 "ml-3 rounded-none px-3 py-2 font-medium transition",
                 isActive(ctaLink.href)
-                  ? "bg-[#E60023] text-white"
-                  : "border border-[#E60023] text-[#E60023] hover:bg-[#E60023] hover:text-white",
+                  ? "bg-[#D95D39] text-white"
+                  : "border border-[#D95D39] text-[#D95D39] hover:bg-[#D95D39] hover:text-white",
               )}
             >
               {ctaLink.label}
@@ -244,8 +244,8 @@ export function Navbar() {
                       className={cn(
                         "block rounded-xl px-3 py-2.5 text-sm font-medium transition",
                         active
-                          ? "bg-[#D9CBA3] text-[#0A1A2F]"
-                          : "text-[#0A1A2F] hover:bg-[#F7F4EF]",
+                          ? "bg-[#F2B880] text-[#17212B]"
+                          : "text-[#17212B] hover:bg-[#F7F8F6]",
                       )}
                     >
                       {link.label}
@@ -265,8 +265,8 @@ export function Navbar() {
                       className={cn(
                         "block rounded-xl px-3 py-2.5 text-sm font-medium transition",
                         active
-                          ? "bg-[#D9CBA3] text-[#0A1A2F]"
-                          : "text-[#0A1A2F] hover:bg-[#F7F4EF]",
+                          ? "bg-[#F2B880] text-[#17212B]"
+                          : "text-[#17212B] hover:bg-[#F7F8F6]",
                       )}
                     >
                       {link.label}

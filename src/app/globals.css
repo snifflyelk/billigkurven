@@ -3,22 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --bg-main: #f7f4ef;
-  --bg-accent: #f7f4ef;
+  --bg-main: #f7f8f6;
+  --bg-accent: #f7f8f6;
   --surface: #ffffff;
-  --ink: #0a1a2f;
-  --brand-blue: #0a1a2f;
-  --brand-sapphire: #12395b;
-  --brand-gold: #d9cba3;
-  --brand-red: #e60023;
-  --brand-gray: #f7f4ef;
+  --ink: #17212b;
+  --brand-blue: #17212b;
+  --brand-sapphire: #1f4e5f;
+  --brand-gold: #f2b880;
+  --brand-red: #d95d39;
+  --brand-gray: #f7f8f6;
 }
 
 .dark {
-  --bg-main: #f7f4ef;
-  --bg-accent: #f7f4ef;
+  --bg-main: #f7f8f6;
+  --bg-accent: #f7f8f6;
   --surface: #ffffff;
-  --ink: #0a1a2f;
+  --ink: #17212b;
 }
 
 body {
@@ -95,9 +95,13 @@ main > section {
 }
 
 main > section:not(:first-of-type) {
-  margin-top: clamp(3.75rem, 8vw, 7.5rem) !important;
-  padding-top: clamp(3rem, 7vw, 7.5rem) !important;
-  padding-bottom: clamp(3rem, 7vw, 7.5rem) !important;
+  margin-top: clamp(2rem, 4vw, 4rem) !important;
+  padding-top: clamp(2rem, 4vw, 4rem) !important;
+  padding-bottom: clamp(2rem, 4vw, 4rem) !important;
+}
+
+main > section:not(:first-of-type) .grid {
+  row-gap: 1rem !important;
 }
 
 main > section:first-of-type {
