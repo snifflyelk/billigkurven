@@ -343,7 +343,7 @@ export default async function Home({
 
         <div className="relative grid items-start gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-9">
           <article className="space-y-6 fade-rise">
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+            <span className="store-hero-badge inline-flex items-center gap-2 rounded-full border border-white bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#002B5C]">
               <BoltIcon className="h-3.5 w-3.5" aria-hidden />
               Kjedepriser i sanntid
             </span>

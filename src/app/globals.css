@@ -111,6 +111,11 @@ main > section:first-of-type :is(h1, h2, h3, p, span) {
   color: #ffffff !important;
 }
 
+main > section:first-of-type .store-hero-badge {
+  color: var(--brand-blue) !important;
+  background: #ffffff !important;
+}
+
 main > section:first-of-type a.bg-orange-500,
 main > section:first-of-type a.bg-red-600 {
   background: var(--brand-red) !important;
